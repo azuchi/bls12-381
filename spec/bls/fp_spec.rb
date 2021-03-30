@@ -4,8 +4,6 @@ require 'spec_helper'
 
 RSpec.describe 'bls12-381 Fp' do
 
-  NUM_RUNS = 10
-
   describe 'Fp equality' do
     it 'should be equal.' do
       NUM_RUNS.times do
