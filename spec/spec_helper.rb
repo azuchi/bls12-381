@@ -15,3 +15,11 @@ RSpec.configure do |config|
     c.syntax = :expect
   end
 end
+
+def create_fq2_items(amount)
+  return BLS::Fq2.new([rand(1..BLS::Fq::ORDER), rand(1..BLS::Fq::ORDER)]) if amount == 1
+
+  amount.times.map do
+    BLS::Fq2.new([rand(1..BLS::Fq::ORDER), rand(1..BLS::Fq::ORDER)])
+  end
+end
