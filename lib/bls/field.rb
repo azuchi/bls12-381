@@ -148,7 +148,7 @@ module BLS
       p = one
       d = self
       while n.positive?
-        p *= d if n & 1
+        p *= d unless (n & 1).zero?
         n >>= 1
         d = d.square
       end

@@ -179,13 +179,13 @@ RSpec.describe 'bls12-381 Fp2' do
 
   describe 'Fp2 pow and multiplication equality' do
     it 'should pass pow and multiplication equality.' do
-      # NUM_RUNS.times do
-      #   a = create_fq2_items(1)
-      #   expect(a**0).to eq(BLS::Fq2::ONE)
-      #   expect(a**1).to eq(a)
-      #   expect(a**2).to eq(a * a)
-      #   expect(a**3).to eq(a * a * a)
-      # end
+      NUM_RUNS.times do
+        a = create_fq2_items(1)
+        expect(a**0).to eq(BLS::Fq2::ONE)
+        expect(a**1).to eq(a)
+        expect(a**2).to eq(a * a)
+        expect(a**3).to eq(a * a * a)
+      end
     end
   end
 end
