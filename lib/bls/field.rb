@@ -238,6 +238,11 @@ module BLS
       factor = Fq.new(a * a + b * b).invert
       Fq2.new([factor * a, factor * -b])
     end
+
+    # Raises to q**i -th power
+    def frobenius_map(power)
+      Fq2.new([coeffs[0], coeffs[1] * FROBENIUS_COEFFICIENTS[power % 2]])
+    end
   end
 
 end
