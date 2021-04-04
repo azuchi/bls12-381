@@ -5,11 +5,6 @@ module BLS
   # Finite field
   module Field
 
-    def self.mod(a, b)
-      res = a % b
-      res >= 0 ? res : b + res
-    end
-
     def zero?
       value.zero?
     end
@@ -81,7 +76,7 @@ module BLS
     def initialize(value)
       raise ArgumentError, 'Invalid value.' unless value.is_a?(Integer)
 
-      @value = Field.mod(value, ORDER)
+      @value = BLS.mod(value, ORDER)
     end
 
     ZERO = Fq.new(0)
@@ -100,7 +95,7 @@ module BLS
     def initialize(value)
       raise ArgumentError, 'Invalid value.' unless value.is_a?(Integer)
 
-      @value = Field.mod(value, ORDER)
+      @value = BLS.mod(value, ORDER)
     end
 
     ZERO = Fr.new(0)
