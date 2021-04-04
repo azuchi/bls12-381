@@ -243,6 +243,270 @@ module BLS
     def frobenius_map(power)
       Fq2.new([coeffs[0], coeffs[1] * FROBENIUS_COEFFICIENTS[power % 2]])
     end
+
+    def mul_by_non_residue
+      c0, c1 = coeffs
+      t0 = c0 * 4
+      t1 = c1 * 4
+      Fq2.new([t0 - t1, t0 + t1])
+    end
   end
 
+  # Finite extension field over irreducible polynomial.
+  # Fq2(v) / (v^3 - ξ) where ξ = u + 1
+  class Fq6
+    include FQP
+
+    attr_reader :coeffs
+
+    def initialize(coeffs)
+      raise ArgumentError, 'Expected array with 3 elements' unless coeffs.size == 3
+
+      @coeffs = coeffs
+    end
+
+    def self.from_tuple(t)
+      Fq6.new([Fq2.new(t[0...2]), Fq2.new(t[2...4]), Fq2.new(t[4...6])])
+    end
+
+    ZERO = Fq6.new([Fq2::ZERO, Fq2::ZERO, Fq2::ZERO])
+    ONE = Fq6.new([Fq2::ONE, Fq2::ZERO, Fq2::ZERO])
+
+    FROBENIUS_COEFFICIENTS_1 = [
+      Fq2.new([
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+                0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac
+              ]),
+      Fq2.new([
+                0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+              ]),
+      Fq2.new([
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000,
+                0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe
+              ])
+    ].freeze
+
+    FROBENIUS_COEFFICIENTS_2 = [
+      Fq2.new([
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaad,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaa,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffff,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ])
+    ].freeze
+
+    # Multiply by quadratic non-residue v.
+    def mul_by_non_residue
+      Fq6.new([coeffs[2].mul_by_non_residue, coeffs[0], coeffs[1]])
+    end
+
+    def multiply(other)
+      return Fq6.new([coeffs[0] * other, coeffs[1] * other, coeffs[2] * other]) if other.is_a?(Integer)
+
+      c0, c1, c2 = coeffs
+      r0, r1, r2 = other.coeffs
+      t0 = c0 * r0
+      t1 = c1 * r1
+      t2 = c2 * r2
+
+      Fq6.new([
+                t0 + ((c1 + c2) * (r1 + r2) - (t1 + t2)).mul_by_non_residue,
+                (c0 + c1) * (r0 + r1) - (t0 + t1) + t2.mul_by_non_residue,
+                t1 + ((c0 + c2) * (r0 + r2) - (t0 + t2))
+              ])
+    end
+    alias * multiply
+
+    # Sparse multiplication.
+    def multiply_by_1(b1)
+      Fq6.new([coeffs[2].multiply(b1).mul_by_non_residue, coeffs[0] * b1, coeffs[1] * b1])
+    end
+
+    # Sparse multiplication.
+    def multiply_by_01(b0, b1)
+      c0, c1, c2 = coeffs
+      t0 = c0 * b0
+      t1 = c1 * b1
+      Fq6.new([((c1 + c2) * b1 - t1).mul_by_non_residue + t0, (b0 + b1) * (c0 + c1) - t0 - t1, (c0 + c2) * b0 - t0 + t1])
+    end
+
+    def multiply_by_fq2(other)
+      Fq6.new(coeffs.map { |c| c * other })
+    end
+
+    def square
+      c0, c1, c2 = coeffs
+      t0 = c0.square
+      t1 = c0 * c1 * 2
+      t3 = c1 * c2 * 2
+      t4 = c2.square
+      Fq6.new([t3.mul_by_non_residue + t0, t4.mul_by_non_residue + t1, t1 + (c0 - c1 + c2).square + t3 - t0 - t4])
+    end
+
+    def invert
+      c0, c1, c2 = coeffs
+      t0 = c0.square - (c2 * c1).mul_by_non_residue
+      t1 = c2.square.mul_by_non_residue - (c0 * c1)
+      t2 = c1.square - c0 * c2
+      t4 = ((c2 * t1 + c1 * t2).mul_by_non_residue + c0 * t0).invert
+      Fq6.new([t4 * t0, t4 * t1, t4 * t2])
+    end
+
+    def frobenius_map(power)
+      Fq6.new([
+                coeffs[0].frobenius_map,
+                coeffs[1].frobenius_map * Fq6::FROBENIUS_COEFFICIENTS_1[power % 6],
+                coeffs[2].frobenius_map * Fq6::FROBENIUS_COEFFICIENTS_2[power % 6]
+              ])
+    end
+  end
+
+  # Finite extension field over irreducible polynomial.
+  # Fq6(w) / (w2 - γ) where γ = v
+  class Fq12
+    include FQP
+
+    attr_reader :coeffs
+
+    def initialize(coeffs)
+      raise ArgumentError, 'Expected array with 2 elements' unless coeffs.size == 2
+
+      @coeffs = coeffs
+    end
+
+    def self.from_tuple(t)
+      Fq12.new([Fq6.from_tuple(t[0...6]), Fq6.from_tuple(t[6...12])])
+    end
+
+    ZERO = Fq12.new([Fq6::ZERO, Fq6::ZERO])
+    ONE = Fq12.new([Fq6::ONE, Fq6::ZERO])
+
+    FROBENIUS_COEFFICIENTS = [
+      Fq2.new([
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000001,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8,
+                0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3
+              ]),
+      Fq2.new([
+                0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffeffff,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2,
+                0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09
+              ]),
+      Fq2.new([
+                0x00000000000000005f19672fdf76ce51ba69c6076a0f77eaddb3a93be6f89688de17d813620a00022e01fffffffefffe,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995,
+                0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaaaa,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x00fc3e2b36c4e03288e9e902231f9fb854a14787b6c7b36fec0c8ec971f63c5f282d5ac14d6c7ec22cf78a126ddc4af3,
+                0x1904d3bf02bb0667c231beb4202c0d1f0fd603fd3cbd5f4f7b2443d784bab9c4f67ea53d63e7813d8d0775ed92235fb8
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x06af0e0437ff400b6831e36d6bd17ffe48395dabc2d3435e77f76e17009241c5ee67992f72ec05f4c81084fbede3cc09,
+                0x135203e60180a68ee2e9c448d77a2cd91c3dedd930b1cf60ef396489f61eb45e304466cf3e67fa0af1ee7b04121bdea2
+              ]),
+      Fq2.new([
+                0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaad,
+                0x000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+              ]),
+      Fq2.new([
+                0x05b2cfd9013a5fd8df47fa6b48b1e045f39816240c0b8fee8beadf4d8e9c0566c63a3e6e257f87329b18fae980078116,
+                0x144e4211384586c16bd3ad4afa99cc9170df3560e77982d0db45f3536814f0bd5871c1908bd478cd1ee605167ff82995
+              ])
+    ].freeze
+
+    def multiply(other)
+      return Fq12.new([coeffs[0] * other, coeffs[1] * other]) if other.is_a?(Integer)
+
+      c0, c1 = coeffs
+      r0, r1 = other.coeffs
+      t1 = c0 * r0
+      t2 = c1 * r1
+      Fq12.new([t1 + t2.mul_by_non_residue, (c0 + c1) * (r0 + r1) - (t1 + t2)])
+    end
+    alias * multiply
+
+    def multiply_by_014(o0, o1, o4)
+      c0, c1 = coeffs
+      t0 = c0.multiply_by_01(o0, o1)
+      t1 = c1.multiply_by_1(o4)
+      Fq12.new([t1.mul_by_non_residue + t0, (c1 + c0).multiply_by_01(o0, o1 + o4) - t0 - t1])
+    end
+
+    def multiply_by_fq2(other)
+      Fq12.new(coeffs.map{ |c| c.multiply_by_fq2(other) })
+    end
+
+    def square
+      c0, c1 = coeffs
+      ab = c0 * c1
+      Fq12.new([(c1.mul_by_non_residue + c0) * (c0 + c1) - ab - ab.mul_by_non_residue, ab + ab])
+    end
+
+    def invert
+      c0, c1 = coeffs
+      t = (c0.square - c1.square.mul_by_non_residue).invert
+      Fq12.new([c0 * t, (c1 * t).negate])
+    end
+
+    def frobenius_map(power)
+      c0, c1 = coeffs
+      r0 = c0.frobenius_map(power)
+      c1_0, c1_1, c1_2 = c1.frobenius_map(power).coeffs
+      Fq12.new([r0,
+                Fq6.new([
+                          c1_0 * Fq12::FROBENIUS_COEFFICIENTS[power % 12],
+                          c1_1 * Fq12::FROBENIUS_COEFFICIENTS[power % 12],
+                          c1_2 * Fq12::FROBENIUS_COEFFICIENTS[power % 12]
+                        ])])
+    end
+  end
 end

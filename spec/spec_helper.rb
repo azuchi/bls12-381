@@ -23,3 +23,11 @@ def create_fq2_items(amount)
     BLS::Fq2.new([rand(1..BLS::Fq::ORDER), rand(1..BLS::Fq::ORDER)])
   end
 end
+
+def create_fq12_items(amount)
+  result = amount.times.map do
+    items = 12.times.map { rand(1..BLS::Fq::ORDER) }
+    BLS::Fq12.from_tuple(items)
+  end
+  result.size == 1 ? result.first : result
+end
