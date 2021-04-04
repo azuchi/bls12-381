@@ -31,3 +31,11 @@ def create_fq12_items(amount)
   end
   result.size == 1 ? result.first : result
 end
+
+def create_point_g1_items(amount)
+  result = amount.times.map do
+    items = 3.times.map { rand(1..BLS::Fq::ORDER) }
+    BLS::PointG1.new(items[0], items[1], items[2])
+  end
+  result.size == 1 ? result.first : result
+end

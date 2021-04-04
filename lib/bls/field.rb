@@ -70,6 +70,7 @@ module BLS
     include Field
 
     ORDER = BLS::Curve::P
+    MAX_BITS = Curve::P.bit_length
 
     attr_reader :value
 
@@ -165,6 +166,7 @@ module BLS
     EV4 = 0xaa404866706722864480885d68ad0ccac1967c7544b447873cc37e0181271e006df72162a3d3e0287bf597fbf7f8fc1
 
     ORDER = BLS::Curve::P2
+    MAX_BITS = Curve::P2.bit_length
     COFACTOR = BLS::Curve::H2
 
     attr_reader :coeffs
