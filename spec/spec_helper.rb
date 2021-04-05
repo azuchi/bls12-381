@@ -47,3 +47,8 @@ def create_point_g2_items(amount)
   end
   result.size == 1 ? result.first : result
 end
+
+def fixture_file(relative_path)
+  path = File.join(File.dirname(__FILE__), 'fixtures', relative_path)
+  File.read(path)
+end
