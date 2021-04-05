@@ -155,6 +155,10 @@ module BLS
       p
     end
     alias ** pow
+
+    def conjugate
+      self.class.new([coeffs[0], coeffs[1].negate])
+    end
   end
 
   # Finite extension field over irreducible polynomial.
@@ -242,10 +246,15 @@ module BLS
 
     # Raises to q**i -th power
     def frobenius_map(power)
-      Fq2.new([coeffs[0], coeffs[1] * FROBENIUS_COEFFICIENTS[power % 2]])
+      Fq2.new([coeffs[0], coeffs[1] * Fq2::FROBENIUS_COEFFICIENTS[power % 2]])
     end
 
     def mul_by_non_residue
+      c0, c1 = coeffs
+      Fq2.new([c0 - c1, c0 + c1])
+    end
+
+    def multiply_by_b
       c0, c1 = coeffs
       t0 = c0 * 4
       t1 = c1 * 4
@@ -502,13 +511,61 @@ module BLS
       c0, c1 = coeffs
       r0 = c0.frobenius_map(power)
       c1_0, c1_1, c1_2 = c1.frobenius_map(power).coeffs
-      Fq12.new([r0,
-                Fq6.new([
-                          c1_0 * Fq12::FROBENIUS_COEFFICIENTS[power % 12],
-                          c1_1 * Fq12::FROBENIUS_COEFFICIENTS[power % 12],
-                          c1_2 * Fq12::FROBENIUS_COEFFICIENTS[power % 12]
-                        ])])
+      Fq12.new([
+                 r0,
+                 Fq6.new([
+                           c1_0 * Fq12::FROBENIUS_COEFFICIENTS[power % 12],
+                           c1_1 * Fq12::FROBENIUS_COEFFICIENTS[power % 12],
+                           c1_2 * Fq12::FROBENIUS_COEFFICIENTS[power % 12]])])
     end
+
+    def final_exponentiate
+      t0 = frobenius_map(6) / self
+      t1 = t0.frobenius_map(2) * t0
+      t2 = t1.cyclotomic_exp(Curve::X).conjugate
+      t3 = t1.cyclotomic_square.conjugate * t2
+      t4 = t3.cyclotomic_exp(Curve::X).conjugate
+      t5 = t4.cyclotomic_exp(Curve::X).conjugate
+      t6 = t5.cyclotomic_exp(Curve::X).conjugate * t2.cyclotomic_square
+      (t2 * t5).frobenius_map(2) * (t4 * t1).frobenius_map(3) *
+        (t6 * t1.conjugate).frobenius_map(1) * t6.cyclotomic_exp(Curve::X).conjugate * t3.conjugate * t1
+    end
+
+    def cyclotomic_square
+      c0, c1 = coeffs
+      c0c0, c0c1, c0c2 = c0.coeffs
+      c1c0, c1c1, c1c2 = c1.coeffs
+      t3, t4 = fq4_square(c0c0, c1c1)
+      t5, t6 = fq4_square(c1c0, c0c2)
+      t7, t8 = fq4_square(c0c1, c1c2)
+      t9 = t8.mul_by_non_residue
+      Fq12.new([
+                 Fq6.new([(t3 - c0c0) * 2 + t3, (t5 - c0c1) * 2 + t5, (t7 - c0c2) * 2 + t7]),
+                 Fq6.new([(t9 + c1c0) * 2 + t9, (t4 + c1c1) * 2 + t4, (t6 + c1c2) * 2 + t6])])
+    end
+
+    def cyclotomic_exp(n)
+      z = Fq12::ONE
+      i = BLS_X_LEN - 1
+      while i >= 0
+        z = z.cyclotomic_square
+        z *= self unless BLS.bit_get(n, i).zero?
+        i -= 1
+      end
+      z
+    end
+
+    private
+
+    # @param [Fq2] a
+    # @param [Fq2] b
+    # @return [Array]
+    def fq4_square(a, b)
+      a2 = a.square
+      b2 = b.square
+      [b2.mul_by_non_residue + a2, (a + b).square - a2 - b2]
+    end
+
   end
 
   UT_ROOT = BLS::Fq6.new([BLS::Fq2::ZERO, BLS::Fq2::ONE, BLS::Fq2::ZERO])
@@ -518,6 +575,7 @@ module BLS
   WCU_INV = WCU.invert
   # 1 / F2(2)^((p - 1) / 3) in GF(p^2)
   PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac
+  BLS_X_LEN = Curve::X.bit_length
 
   module_function
 
@@ -529,5 +587,23 @@ module BLS
 
   def psi2(x, y)
     [x * PSI2_C1, y.negate]
+  end
+
+  def miller_loop(ell, g1)
+    f12 = Fq12::ONE
+    p_x, p_y = g1
+    i = BLS_X_LEN - 2
+    j = 0
+    while i >= 0
+      f12 = f12.multiply_by_014(ell[j][0], ell[j][1] * p_x.value, ell[j][2] * p_y.value)
+      unless bit_get(Curve::X, i).zero?
+        j += 1
+        f12 = f12.multiply_by_014(ell[j][0], ell[j][1] * p_x.value, ell[j][2] * p_y.value)
+      end
+      f12 = f12.square unless i.zero?
+      i -= 1
+      j += 1
+    end
+    f12.conjugate
   end
 end

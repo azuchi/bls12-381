@@ -5,6 +5,7 @@ require 'bls/math'
 require 'bls/curve'
 require 'bls/field'
 require 'bls/point'
+require 'bls/pairing'
 
 module BLS
 

@@ -280,9 +280,17 @@ module BLS
       right = b * z.pow(3)
       raise PointError, 'Invalid point: not on curve over Fq' unless left == right
     end
+
+    # Sparse multiplication against precomputed coefficients.
+    # @param [PointG2] p
+    def miller_loop(p)
+      BLS.miller_loop(p.pairing_precomputes, to_affine)
+    end
   end
 
   class PointG2 < ProjectivePoint
+
+    attr_accessor :precomputes
 
     MAX_BITS = Fq2::MAX_BITS
     BASE = PointG2.new(Fq2.new(Curve::G2_X), Fq2.new(Curve::G2_Y), Fq2::ONE)
@@ -297,16 +305,58 @@ module BLS
       raise PointError, 'Invalid point: not on curve over Fq2' unless left == right
     end
 
+    def clear_pairing_precomputes
+      self.precomputes = nil
+    end
+
+    def pairing_precomputes
+      return precomputes if precomputes
+
+      self.precomputes = calc_pairing_precomputes(*to_affine)
+      precomputes
+    end
+
+    private
+
+    def calc_pairing_precomputes(x, y)
+      q_x, q_y, q_z = [x, y, Fq2::ONE]
+      r_x, r_y, r_z = [q_x, q_y, q_z]
+      ell_coeff = []
+      i = BLS_X_LEN - 2
+      while i >= 0
+        t0 = r_y.square
+        t1 = r_z.square
+        t2 = t1.multiply(3).multiply_by_b
+        t3 = t2 * 3
+        t4 = (r_y + r_z).square - t1 - t0
+        ell_coeff << [t2 - t0, r_x.square * 3, t4.negate]
+        r_x = (t0 - t3) * r_x * r_y / 2
+        r_y = ((t0 + t3) / 2).square - t2.square * 3
+        r_z = t0 * t4
+        unless BLS.bit_get(Curve::X, i).zero?
+          t0 = r_y - q_y * r_z
+          t1 = r_x - q_x * r_z
+          ell_coeff << [t0 * q_x - t1 * q_y, t0.negate, t1]
+          t2 = t1.square
+          t3 = t2 * t1
+          t4 = t2 * r_x
+          t5 = t3 - t4 * 2 + t0.square * r_z
+          r_x = t1 * t5
+          r_y = (t4 - t5) * t0 - t3 * r_y
+          r_z *= t3
+        end
+        i -= 1
+      end
+      ell_coeff
+    end
   end
 
   module_function
 
   def clear_cofactor_g2(p)
     t1 = p.multiply_unsafe(Curve::X).negate
-    p_a = p.to_affine
-    t2 = p.from_affine_tuple(BLS.psi(p_a[0], p_a[1]))
-    p2_a = p.double.to_affine
-    p2 = p.from_affine_tuple(BLS.psi2(p2_a[0], p2_a[1]))
+    t2 = p.from_affine_tuple(BLS.psi(*p.to_affine))
+    p2 = p.from_affine_tuple(BLS.psi2(*p.double.to_affine))
     p2 - t2 + (t1 + t2).multiply_unsafe(Curve::X).negate - t1 - p
   end
 

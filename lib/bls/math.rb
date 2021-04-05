@@ -19,6 +19,10 @@ module BLS
     res
   end
 
+  def bit_get(n, pos)
+    (n >> pos) & 1
+  end
+
   # Normalize private key.
   # @param [String|Integer] private_key a private key with hex or number.
   # @return [BLS::Fq] private key field.
