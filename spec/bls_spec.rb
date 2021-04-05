@@ -59,4 +59,20 @@ RSpec.describe 'bls12-381' do
     g2 = BLS::PointG2.new(x, y, BLS::Fq2::ONE)
     expect(g2.to_hex).to eq('13e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb80606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be0ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801')
   end
+
+  it 'should compress and decompress G1 points' do
+    priv = BLS::PointG1.from_private_key(42)
+    public_key = priv.to_hex(compressed: true)
+    decomp = BLS::PointG1.from_hex(public_key)
+    expect(public_key).to eq(decomp.to_hex(compressed: true))
+  end
+
+  it 'should not compress and decompress zero G1 point' do
+    expect{ BLS::PointG1.from_private_key(0) }.to raise_error(BLS::Error)
+  end
+
+  let(:g2_vectors) do
+    vectors = fixture_file('bls12-381-g2-test-vectors.txt').trim
+    vectors.split('\n').map { |v| v.split(':') }
+  end
 end

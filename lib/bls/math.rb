@@ -30,7 +30,8 @@ module BLS
   def normalize_priv_key(private_key)
     k = private_key.is_a?(String) ? private_key.to_i(16) : private_key
     fq = Fq.new(k)
-    raise BLS::Error, 'Private key cannot be 0'
+    raise BLS::Error, 'Private key cannot be 0' if fq.zero?
+
     fq
   end
 
