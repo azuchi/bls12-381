@@ -115,11 +115,38 @@ module BLS
     end
 
     def to_affine(inv_z = z.invert)
-      [x * inv_z. y * inv_z]
+      [x * inv_z, y * inv_z]
+    end
+
+    def to_affine_batch(points)
+      to_inv = gen_invert_batch(points.map(&:z))
+      points.map.with_index { |p, i| p.to_affine(to_inv[i]) }
     end
 
     def from_affine_tuple(xy)
-      new_point(xy[0], xy[1], self.class.const_get(:ONE))
+      new_point(xy[0], xy[1], x.class.const_get(:ONE))
+    end
+
+    def gen_invert_batch(nums)
+      len = nums.length
+      scratch = Array.new(len)
+      acc = x.class::ONE
+      len.times do |i|
+        next if nums[i].zero?
+
+        scratch[i] = acc
+        acc *= nums[i]
+      end
+      acc = acc.invert
+      len.times do |t|
+        i = len - t - 1
+        next if nums[i].zero?
+
+        tmp = acc * nums[i]
+        nums[i] = acc * scratch[i]
+        acc = tmp
+      end
+      nums
     end
 
     # Constant time multiplication. Uses wNAF.
@@ -151,6 +178,20 @@ module BLS
 
     def max_bits
       self.class.const_get(:MAX_BITS)
+    end
+
+    def normalize_z(points)
+      to_affine_batch(points).map{ |p| from_affine_tuple(p) }
+    end
+
+    def calc_multiply_precomputes(w)
+      raise PointError, 'This point already has precomputes.' if m_precomputes
+
+      self.m_precomputes = [w, normalize_z(precomputes_window(w))]
+    end
+
+    def clear_multiply_precomputes
+      self.m_precomputes = nil
     end
 
     private
@@ -240,4 +281,33 @@ module BLS
       raise PointError, 'Invalid point: not on curve over Fq' unless left == right
     end
   end
+
+  class PointG2 < ProjectivePoint
+
+    MAX_BITS = Fq2::MAX_BITS
+    BASE = PointG2.new(Fq2.new(Curve::G2_X), Fq2.new(Curve::G2_Y), Fq2::ONE)
+    ZERO = PointG2.new(Fq2::ONE, Fq2::ONE, Fq2::ZERO)
+
+    def validate!
+      b = Fq2.new(Curve::B2)
+      return if zero?
+
+      left = y.pow(2) * z - x.pow(3)
+      right = b * z.pow(3)
+      raise PointError, 'Invalid point: not on curve over Fq2' unless left == right
+    end
+
+  end
+
+  module_function
+
+  def clear_cofactor_g2(p)
+    t1 = p.multiply_unsafe(Curve::X).negate
+    p_a = p.to_affine
+    t2 = p.from_affine_tuple(BLS.psi(p_a[0], p_a[1]))
+    p2_a = p.double.to_affine
+    p2 = p.from_affine_tuple(BLS.psi2(p2_a[0], p2_a[1]))
+    p2 - t2 + (t1 + t2).multiply_unsafe(Curve::X).negate - t1 - p
+  end
+
 end

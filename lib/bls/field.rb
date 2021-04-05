@@ -116,6 +116,10 @@ module BLS
       coeffs == other.coeffs
     end
 
+    def zero?
+      coeffs.find { |c| !c.zero? }.nil?
+    end
+
     def add(other)
       self.class.new(coeffs.map.with_index { |v, i| v + other.coeffs[i] })
     end
@@ -382,9 +386,9 @@ module BLS
 
     def frobenius_map(power)
       Fq6.new([
-                coeffs[0].frobenius_map,
-                coeffs[1].frobenius_map * Fq6::FROBENIUS_COEFFICIENTS_1[power % 6],
-                coeffs[2].frobenius_map * Fq6::FROBENIUS_COEFFICIENTS_2[power % 6]
+                coeffs[0].frobenius_map(power),
+                coeffs[1].frobenius_map(power) * Fq6::FROBENIUS_COEFFICIENTS_1[power % 6],
+                coeffs[2].frobenius_map(power) * Fq6::FROBENIUS_COEFFICIENTS_2[power % 6]
               ])
     end
   end
@@ -505,5 +509,25 @@ module BLS
                           c1_2 * Fq12::FROBENIUS_COEFFICIENTS[power % 12]
                         ])])
     end
+  end
+
+  UT_ROOT = BLS::Fq6.new([BLS::Fq2::ZERO, BLS::Fq2::ONE, BLS::Fq2::ZERO])
+  WSQ = BLS::Fq12.new([UT_ROOT, BLS::Fq6::ZERO])
+  WSQ_INV = WSQ.invert
+  WCU = BLS::Fq12.new([BLS::Fq6::ZERO, UT_ROOT])
+  WCU_INV = WCU.invert
+  # 1 / F2(2)^((p - 1) / 3) in GF(p^2)
+  PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac
+
+  module_function
+
+  def psi(x, y)
+    x2 = WSQ_INV.multiply_by_fq2(x).frobenius_map(1).multiply(WSQ).coeffs[0].coeffs[0]
+    y2 = WCU_INV.multiply_by_fq2(y).frobenius_map(1).multiply(WCU).coeffs[0].coeffs[0]
+    [x2, y2]
+  end
+
+  def psi2(x, y)
+    [x * PSI2_C1, y.negate]
   end
 end

@@ -40,3 +40,10 @@ def create_point_g1_items(amount)
   result.size == 1 ? result.first : result
 end
 
+def create_point_g2_items(amount)
+  result = amount.times.map do
+    items = create_fq2_items(3)
+    BLS::PointG2.new(items[0], items[1], items[2])
+  end
+  result.size == 1 ? result.first : result
+end
