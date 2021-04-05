@@ -233,9 +233,10 @@ module BLS
     # Parse PointG1 from form hex.
     # @param [String] hex hex value of PointG1.
     # @return [PointG1]
+    # @raise [BLS::PointError] Occurs when hex length does not match, or point does not on G1.
     def self.from_hex(hex)
       bytes = [hex].pack('H*')
-      point = case bytes.bytesize 
+      point = case bytes.bytesize
               when 48
                 compressed_value = hex.to_i(16)
                 b_flag = BLS.mod(compressed_value, POW_2_383) / POW_2_382
@@ -250,7 +251,7 @@ module BLS
                 y = Curve::P - y unless ((y * 2) / Curve::P) == a_flag
                 PointG1.new(Fq.new(x), Fq.new(y), Fq::ONE)
               when 96
-                return ZERO unless (bytes[0] & (1 << 6)).zero?
+                return ZERO unless (bytes[0].unpack1('H*').to_i(16) & (1 << 6)).zero?
 
                 x = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
                 y = bytes[PUBLIC_KEY_LENGTH..-1].unpack1('H*').to_i(16)
@@ -260,6 +261,27 @@ module BLS
               end
       point.validate!
       point
+    end
+
+    def to_hex(compressed: false)
+      if compressed
+        if self == PointG1::ZERO
+          hex = POW_2_383 + POW_2_382
+        else
+          x, y = to_affine
+          flag = (y.value * 2) / Curve::P
+          hex = x.value + flag * POW_2_381 + POW_2_383
+        end
+        hex.to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0')
+      else
+        if self == PointG1::ZERO
+          (1 << 6).to_s(16) + '00' * (2 * PUBLIC_KEY_LENGTH - 1)
+        else
+          x, y = to_affine
+          x.value.to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
+            y.value.to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0')
+        end
+      end
     end
 
     # Parse Point from private key.
@@ -295,6 +317,44 @@ module BLS
     MAX_BITS = Fq2::MAX_BITS
     BASE = PointG2.new(Fq2.new(Curve::G2_X), Fq2.new(Curve::G2_Y), Fq2::ONE)
     ZERO = PointG2.new(Fq2::ONE, Fq2::ONE, Fq2::ZERO)
+
+    # Parse PointG1 from form hex.
+    # @param [String] hex hex value of PointG2. Currently, only uncompressed formats(196 bytes) are supported.
+    # @return [BLS::PointG2] PointG2 object.
+    # @raise [BLS::PointError]
+    def self.from_hex(hex)
+      bytes = [hex].pack('H*')
+      point = case bytes.bytesize
+              when 96
+                raise PointError, 'Compressed format not supported yet.'
+              when 192
+                return ZERO unless (bytes[0].unpack1('H*').to_i(16) & (1 << 6)).zero?
+
+                x1 = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
+                x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
+                y1 = bytes[(2 * PUBLIC_KEY_LENGTH)...(3 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
+                y0 = bytes[(3 * PUBLIC_KEY_LENGTH)..-1].unpack1('H*').to_i(16)
+                PointG2.new(Fq2.new([x0, x1]), Fq2.new([y0, y1]), Fq2::ONE)
+              else
+                raise PointError, 'Invalid uncompressed point G2, expected 192 bytes.'
+              end
+      point.validate!
+      point
+    end
+
+    def to_hex(compressed: false)
+      raise ArgumentError, 'Not supported' if compressed
+      if self == PointG2::ZERO
+        (1 << 6).to_s(16) + '00' * (4 * PUBLIC_KEY_LENGTH - 1)
+      else
+        validate!
+        x, y = to_affine.map(&:values)
+        x[1].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
+          x[0].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
+          y[1].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
+          y[0].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0')
+      end
+    end
 
     def validate!
       b = Fq2.new(Curve::B2)
