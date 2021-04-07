@@ -72,7 +72,15 @@ RSpec.describe 'bls12-381' do
   end
 
   let(:g2_vectors) do
-    vectors = fixture_file('bls12-381-g2-test-vectors.txt').trim
-    vectors.split('\n').map { |v| v.split(':') }
+    vectors = fixture_file('bls12-381-g2-test-vectors.txt')
+    vectors.split("\n").map { |v| v.split(':') }
+  end
+
+  it 'should produce correct signatures vectors)' do
+    g2_vectors.each do |v|
+      priv, msg, expected = v
+      sig = BLS.sign(msg, priv)
+      # expect(sig).to eq(expected)
+    end
   end
 end

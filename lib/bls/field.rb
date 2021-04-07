@@ -577,6 +577,61 @@ module BLS
   PSI2_C1 = 0x1a0111ea397fe699ec02408663d4de85aa0d857d89759ad4897d29650fb85f9b409427eb4f49fffd8bfd00000000aaac
   BLS_X_LEN = Curve::X.bit_length
 
+  P_MINUS_9_DIV_16 = (Curve::P**2 - 9) / 16
+
+  XNUM = [
+    Fq2.new([
+              0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6,
+              0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97d6]),
+    Fq2.new([
+              0x0,
+              0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71a]),
+    Fq2.new([
+              0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71e,
+              0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38d]),
+    Fq2.new([
+              0x171d6541fa38ccfaed6dea691f5fb614cb14b4e7f4e810aa22d6108f142b85757098e38d0f671c7188e2aaaaaaaa5ed1,
+              0x0])
+  ].freeze
+  XDEN = [
+    Fq2.new([
+              0x0,
+              0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa63]),
+    Fq2.new([
+              0xc,
+              0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa9f]),
+    Fq2::ONE,
+    Fq2::ZERO
+  ].freeze
+  YNUM = [
+    Fq2.new([
+              0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706,
+              0x1530477c7ab4113b59a4c18b076d11930f7da5d4a07f649bf54439d87d27e500fc8c25ebf8c92f6812cfc71c71c6d706]),
+    Fq2.new([
+              0x0,
+              0x5c759507e8e333ebb5b7a9a47d7ed8532c52d39fd3a042a88b58423c50ae15d5c2638e343d9c71c6238aaaaaaaa97be]),
+    Fq2.new([
+              0x11560bf17baa99bc32126fced787c88f984f87adf7ae0c7f9a208c6b4f20a4181472aaa9cb8d555526a9ffffffffc71c,
+              0x8ab05f8bdd54cde190937e76bc3e447cc27c3d6fbd7063fcd104635a790520c0a395554e5c6aaaa9354ffffffffe38f]),
+    Fq2.new([
+              0x124c9ad43b6cf79bfbf7043de3811ad0761b0f37a1e26286b0e977c69aa274524e79097a56dc4bd9e1b371c71c718b10,
+              0x0])
+  ].freeze
+  YDEN = [
+    Fq2.new([
+              0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fb,
+              0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa8fb]),
+    Fq2.new([
+              0x0,
+              0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffa9d3]),
+    Fq2.new([
+              0x12,
+              0x1a0111ea397fe69a4b1ba7b6434bacd764774b84f38512bf6730d2a0f6b0f6241eabfffeb153ffffb9feffffffffaa99]),
+    Fq2.new([0x1, 0x0])
+  ].freeze
+
+  ISOGENY_COEFFICIENTS = [XNUM, XDEN, YNUM, YDEN]
+
   module_function
 
   def psi(x, y)
@@ -606,4 +661,32 @@ module BLS
     end
     f12.conjugate
   end
+
+  
+
+  def sgn0(x)
+    x0, x1 = x.values
+    sign_0 = x0 % 2
+    zero_0 = x0 === 0
+    sign_1 = x1 % 2
+    sign_0 || (zero_0 && sign_1)
+  end
+
+  def sqrt_div_fq2(u, v)
+    uv7 = u * v**7
+    uv15 = uv7 * v**8
+    gamma = uv15**P_MINUS_9_DIV_16 * uv7
+    success = false
+    result = gamma
+    positive_roots_of_unity = Fq2::ROOTS_OF_UNITY[0...4]
+    positive_roots_of_unity.each do |root|
+      candidate = root * gamma
+      if (candidate**2 * v - u).zero? && !success
+        success = true
+        result = candidate
+      end
+    end
+    [success, result]
+  end
+
 end

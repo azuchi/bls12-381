@@ -342,6 +342,20 @@ module BLS
       point
     end
 
+    # Convert hash to PointG2
+    # @param [String] message a hash with hex format.
+    # @return [BLS::PointG2] point.
+    # @raise [BLS::PointError]
+    def self.hash_to_curve(message)
+      raise PointError, 'expected hex string' unless message[/^[a-fA-F0-9]*$/]
+
+      u = BLS.hash_to_field(message, 2)
+      q0 = PointG2.new(*BLS.isogeny_map_g2(*BLS.map_to_curve_sswu_g2(u[0])))
+      q1 = PointG2.new(*BLS.isogeny_map_g2(*BLS.map_to_curve_sswu_g2(u[1])))
+      r = q0 + q1
+      BLS.clear_cofactor_g2(r)
+    end
+
     def to_hex(compressed: false)
       raise ArgumentError, 'Not supported' if compressed
       if self == PointG2::ZERO
@@ -420,4 +434,52 @@ module BLS
     p2 - t2 + (t1 + t2).multiply_unsafe(Curve::X).negate - t1 - p
   end
 
+  def norm_p2h(point)
+    point.is_a?(PointG2) ? point : PointG2.hash_to_curve(point)
+  end
+
+  # Convert hash to Field.
+  # @param [String] message hash value with hex format.
+  # @return [Array[Integer]] byte array.
+  def hash_to_field(message, degree, random_oracle: true)
+    count = random_oracle ? 2 : 1
+    l = 64
+    len_in_bytes = count * degree * l
+    pseudo_random_bytes = BLS.expand_message_xmd(message, len_in_bytes)
+    u = Array.new(count)
+    count.times do |i|
+      e = Array.new(degree)
+      degree.times do |j|
+        elm_offset = l * (j + i * degree)
+        tv = pseudo_random_bytes[elm_offset...(elm_offset + l)]
+        e[j] = BLS.mod(BLS.os2ip(tv), Curve::P)
+      end
+      u[i] = e
+    end
+    u
+  end
+
+  # @param [String] message hash value with hex format.
+  # @param [Integer] len_in_bytes length
+  # @return [Array[Integer]] byte array.
+  # @raise BLS::Error
+  def expand_message_xmd(message, len_in_bytes)
+    b_in_bytes = BigDecimal(SHA256_DIGEST_SIZE)
+    r_in_bytes = b_in_bytes * 2
+    ell = (BigDecimal(len_in_bytes) / b_in_bytes).ceil
+    raise BLS::Error, 'Invalid xmd length' if ell > 255
+
+    dst_prime = DST_LABEL.bytes + BLS.i2osp(DST_LABEL.bytesize, 1)
+    z_pad = BLS.i2osp(0, r_in_bytes)
+    l_i_b_str = BLS.i2osp(len_in_bytes, 2)
+    b = Array.new(ell)
+    payload = z_pad + [message].pack('H*').bytes + l_i_b_str + BLS.i2osp(0, 1) + dst_prime
+    b_0 = Digest::SHA256.digest(payload.pack('C*'))
+    b[0] = Digest::SHA256.digest((b_0.bytes + BLS.i2osp(1, 1) + dst_prime).pack('C*'))
+    (1..ell).each do |i|
+      args = BLS.bin_xor(b_0, b[i - 1]).bytes + BLS.i2osp(i + 1, 1) + dst_prime
+      b[i] = Digest::SHA256.digest(args.pack('C*'))
+    end
+    b.map(&:bytes).flatten[0...len_in_bytes]
+  end
 end
