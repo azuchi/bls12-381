@@ -31,4 +31,27 @@ module BLS
     msg_point = BLS.norm_p2h(message)
     msg_point * BLS.normalize_priv_key(private_key)
   end
+
+  # Generate public key from +private_key+.
+  # @param [Integer|String] private_key The private key. Integer or String(hex).
+  # @return [String] public key with hex format.
+  def get_public_key(private_key)
+    PointG1.from_private_key(private_key).to_hex
+  end
+
+  # Verify BLS signature.
+  # @param [String] signature
+  # @param [String] message Message digest(hash value with hex format) to be verified.
+  # @param [String] public_key Public key with hex format.
+  # @return [Boolean] verification result.
+  def verify(signature, message, public_key)
+    p = BLS.norm_p1(public_key)
+    hm = BLS.norm_p2h(message)
+    g = PointG1::BASE
+    s = BLS.norm_p2(signature)
+    ephm = BLS.pairing(p.negate, hm, with_final_exp: false)
+    egs = BLS.pairing(g, s, with_final_exp: false)
+    exp = (egs * ephm).final_exponentiate
+    exp == Fq12::ONE
+  end
 end

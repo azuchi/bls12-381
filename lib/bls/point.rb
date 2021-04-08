@@ -450,6 +450,14 @@ module BLS
     p2 - t2 + (t1 + t2).multiply_unsafe(Curve::X).negate - t1 - p
   end
 
+  def norm_p1(point)
+    point.is_a?(PointG1) ? point : PointG1.from_hex(point)
+  end
+
+  def norm_p2(point)
+    point.is_a?(PointG2) ? point : PointG2.from_hex(point)
+  end
+
   def norm_p2h(point)
     point.is_a?(PointG2) ? point : PointG2.hash_to_curve(point)
   end

@@ -81,6 +81,9 @@ RSpec.describe 'bls12-381' do
       priv, msg, expected = v
       sig = BLS.sign(msg, priv)
       expect(sig.to_signature).to eq(expected)
+      # Verify
+      public_key = BLS.get_public_key(priv)
+      expect(BLS.verify(sig, msg, public_key))
     end
   end
 end
