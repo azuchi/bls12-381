@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'securerandom'
+
 RSpec.describe 'bls12-381' do
 
   before do
@@ -103,6 +105,40 @@ RSpec.describe 'bls12-381' do
       sig = BLS.sign(msg, priv)
       inv_pub = BLS.get_public_key(g2_vectors[i + 1][1])
       expect(BLS.verify(sig, msg, inv_pub)).to be false
+    end
+  end
+
+  it 'should verify multi-signature' do
+    NUM_RUNS.times do
+      vectors = rand(1..100).times.map do
+        [SecureRandom.hex, rand(1..BLS::Curve::R)]
+      end
+      messages = vectors.map { |message, _| message }
+      public_keys = vectors.map do |_, private_key|
+        BLS.get_public_key(private_key)
+      end
+      signatures = vectors.map do |message, private_key|
+        BLS.sign(message, private_key)
+      end
+      agg = BLS.aggregate_signatures(signatures)
+      expect(BLS.verify_batch(agg, messages, public_keys)).to be true
+    end
+  end
+
+  it 'should batch verify multi-signatures' do
+    NUM_RUNS.times do
+      vectors = rand(1..100).times.map do
+        [SecureRandom.hex, SecureRandom.hex, rand(1..BLS::Curve::R)]
+      end
+      wrong_messages = vectors.map { |_, wrong_message, _| wrong_message }
+      public_keys = vectors.map do |_, _, private_key|
+        BLS.get_public_key(private_key)
+      end
+      signatures = vectors.map do |message, _, private_key|
+        BLS.sign(message, private_key)
+      end
+      agg = BLS.aggregate_signatures(signatures)
+      expect(BLS.verify_batch(agg, wrong_messages, public_keys)).to be false
     end
   end
 end

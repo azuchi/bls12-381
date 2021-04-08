@@ -42,7 +42,7 @@ module BLS
   # Verify BLS signature.
   # @param [String] signature
   # @param [String] message Message digest(hash value with hex format) to be verified.
-  # @param [String] public_key Public key with hex format.
+  # @param [String|BLS::PointG1] public_key Public key with hex format or PointG1.
   # @return [Boolean] verification result.
   def verify(signature, message, public_key)
     p = BLS.norm_p1(public_key)
@@ -53,5 +53,39 @@ module BLS
     egs = BLS.pairing(g, s, with_final_exp: false)
     exp = (egs * ephm).final_exponentiate
     exp == Fq12::ONE
+  end
+
+  # Aggregate multiple signatures.
+  # e(G, S) = e(G, sum(n)Si) = mul(n)(e(G, Si))
+  # @param [Array[String|BLS::PointG2]] signatures multiple signatures.
+  # @return [BLS::PointG2] aggregated signature.
+  def aggregate_signatures(signatures)
+    raise BLS::Error, 'Expected non-empty array.' if signatures.empty?
+
+    signatures.map { |s| BLS.norm_p2(s) }.inject(PointG2::ZERO) { |sum, s| sum + s }
+  end
+
+  # Verify aggregated signature.
+  # @param [BLS::PointG2] signature aggregated signature.
+  # @param [Array[String]] messages the list of message.
+  # @param [Array[String|BLS::PointG1]] public_keys the list of public keys with hex or BLS::PointG1 format.
+  # @return [Boolean] verification result.
+  def verify_batch(signature, messages, public_keys)
+    raise BLS::Error, 'Expected non-empty array.' if messages.empty?
+    raise BLS::Error, 'Public keys count should equal msg count.' unless messages.size == public_keys.size
+
+    n_message = messages.map { |m| BLS.norm_p2h(m) }
+    n_public_keys = public_keys.map { |p| BLS.norm_p1(p) }
+    paired = []
+    n_message.each do |message|
+      group_pubkey = n_message.each_with_index.inject(PointG1::ZERO)do|group_pubkey, (sub_message, i)|
+        sub_message == message ? group_pubkey + n_public_keys[i] : group_pubkey
+      end
+      paired << BLS.pairing(group_pubkey, message, with_final_exp: false)
+    end
+    sig = BLS.norm_p2(signature)
+    paired << BLS.pairing(PointG1::BASE.negate, sig, with_final_exp: false)
+    product = paired.inject(Fq12::ONE) { |a, b| a * b }
+    product.final_exponentiate == Fq12::ONE
   end
 end
