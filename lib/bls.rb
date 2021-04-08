@@ -34,9 +34,9 @@ module BLS
 
   # Generate public key from +private_key+.
   # @param [Integer|String] private_key The private key. Integer or String(hex).
-  # @return [String] public key with hex format.
+  # @return [BLS::PointG1] public key.
   def get_public_key(private_key)
-    PointG1.from_private_key(private_key).to_hex
+    PointG1.from_private_key(private_key)
   end
 
   # Verify BLS signature.
