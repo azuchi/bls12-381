@@ -1,8 +1,9 @@
-# Bls12::381
+# BLS12::381 for Ruby [![Build Status](https://github.com/azuchi/bls12-381/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/azuchi/bls12-381/actions/workflows/main.yml/badge.svg?branch=main) [![Gem Version](https://badge.fury.io/rb/bls12-381.svg)](https://badge.fury.io/rb/bls12-381) [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/bls12/381`. To experiment with that code, run `bin/console` for an interactive prompt.
+This library is a Ruby BLS12-381 implementation based on the JavaScript implementation [noble-bls12-381](https://github.com/paulmillr/noble-bls12-381).
 
-TODO: Delete this and the text above, and describe your gem
+Note: This library has passed the same tests as noble-bls12-381, but has not been audited to prove its safety.
+Please be careful when using this.
 
 ## Installation
 
@@ -22,17 +23,50 @@ Or install it yourself as:
 
 ## Usage
 
-TODO: Write usage instructions here
+```ruby
+require 'bls'
 
-## Development
+# Generate private key.
+private_key = SecureRandom.random_number(BLS::Curve::P)
 
-After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake spec` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+# Or you can use hex string.
+private_key = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c'
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and the created tag, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+# Generate public key from private key.
+public_key = BLS.get_public_key(private_key)
+# Public key is BLS::PointG1 object.
 
-## Contributing
+# sign and verify
+message = '64726e3da8'
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/bls12-381. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/bls12-381/blob/master/CODE_OF_CONDUCT.md).
+signature = BLS.sign(message, private_key)
+# signature is BLS::PointG2 object. You can get signature with hex format using #to_signature method.
+signature.to_signature
+
+is_correct = BLS.verify(signature, message, public_key)
+=> true
+
+# Sign 1 msg with 3 keys
+private_keys = [
+  '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
+  'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
+  '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
+]
+public_keys = private_keys.map { |p| BLS.get_public_key(p) }
+
+signatures2 = private_keys.map { |p| BLS.sign(message, p) }
+agg_public_keys2 = BLS.aggregate_public_keys(public_keys)
+agg_signatures2 = BLS.aggregate_signatures(signatures2)
+is_correct2 = BLS.verify(agg_signatures2, message, agg_public_keys2)
+=> true
+
+# Sign 3 msgs with 3 keys
+messages = %w[d2 0d98 05caf3]
+signatures3 = private_keys.map.with_index { |p, i| BLS.sign(messages[i], p)}
+agg_signatures3 = BLS.aggregate_signatures(signatures3)
+is_correct3 = BLS.verify_batch(agg_signatures3, messages, public_keys)
+=> true
+```
 
 ## License
 
