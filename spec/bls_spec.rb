@@ -83,7 +83,26 @@ RSpec.describe 'bls12-381' do
       expect(sig.to_signature).to eq(expected)
       # Verify
       public_key = BLS.get_public_key(priv)
-      expect(BLS.verify(sig, msg, public_key))
+      expect(BLS.verify(sig, msg, public_key)).to be true
+    end
+  end
+
+  it 'should not verify signature with wrong message' do
+    NUM_RUNS.times do |i|
+      priv, msg, = g2_vectors[i]
+      inv_msg = g2_vectors[i + 1][1]
+      sig = BLS.sign(msg, priv)
+      pub = BLS.get_public_key(priv)
+      expect(BLS.verify(sig, inv_msg, pub)).to be false
+    end
+  end
+
+  it 'should not verify signature with wrong message' do
+    NUM_RUNS.times do |i|
+      priv, msg, = g2_vectors[i]
+      sig = BLS.sign(msg, priv)
+      inv_pub = BLS.get_public_key(g2_vectors[i + 1][1])
+      expect(BLS.verify(sig, msg, inv_pub)).to be false
     end
   end
 end
