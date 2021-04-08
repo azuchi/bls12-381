@@ -278,7 +278,7 @@ module BLS
           (1 << 6).to_s(16) + '00' * (2 * PUBLIC_KEY_LENGTH - 1)
         else
           x, y = to_affine
-          BLS.num_to_hex(x, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(y, PUBLIC_KEY_LENGTH)
+          BLS.num_to_hex(x.value, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(y.value, PUBLIC_KEY_LENGTH)
         end
       end
     end
