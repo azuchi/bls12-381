@@ -83,7 +83,7 @@ module BLS
     success, sqrt_candidate_or_gamma = BLS.sqrt_div_fq2(u, v)
     y = success ? sqrt_candidate_or_gamma : nil
     sqrt_candidate_x1 = sqrt_candidate_or_gamma * t**3
-    u = iso_3_z_t2 * 3 * u
+    u = iso_3_z_t2**3 * u
     success2 = false
     Fq2::ETAS.each do |eta|
       eta_sqrt_candidate = eta * sqrt_candidate_x1

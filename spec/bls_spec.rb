@@ -79,7 +79,7 @@ RSpec.describe 'bls12-381' do
   it 'should produce correct signatures vectors)' do
     g2_vectors.each do |v|
       priv, msg, expected = v
-      # sig = BLS.sign(msg, priv)
+      sig = BLS.sign(msg, priv)
       # expect(sig).to eq(expected)
     end
   end
