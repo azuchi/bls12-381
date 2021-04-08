@@ -133,4 +133,12 @@ module BLS
     fq
   end
 
+  # Convert number to +byte_length+ bytes hex string.
+  # @param [Integer] num number tobe converted.
+  # @param [Integer] byte_length byte length.
+  # @return [String] hex value.
+  def num_to_hex(num, byte_length)
+    num.to_s(16).rjust(2 * byte_length, '0')
+  end
+
 end

@@ -23,8 +23,12 @@ module BLS
 
   module_function
 
+  # Generate BLS signature: s = pk x H(m)
+  # @param [String] message Message digest(hash value with hex format) to be signed.
+  # @param [Integer|String] private_key The private key used for signing. Integer or String(hex).
+  # @return [PointG2] The signature point.
   def sign(message, private_key)
     msg_point = BLS.norm_p2h(message)
-    msg_point
+    msg_point * BLS.normalize_priv_key(private_key)
   end
 end

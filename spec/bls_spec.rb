@@ -80,7 +80,7 @@ RSpec.describe 'bls12-381' do
     g2_vectors.each do |v|
       priv, msg, expected = v
       sig = BLS.sign(msg, priv)
-      # expect(sig).to eq(expected)
+      expect(sig.to_signature).to eq(expected)
     end
   end
 end

@@ -272,14 +272,13 @@ module BLS
           flag = (y.value * 2) / Curve::P
           hex = x.value + flag * POW_2_381 + POW_2_383
         end
-        hex.to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0')
+        BLS.num_to_hex(hex, PUBLIC_KEY_LENGTH)
       else
         if self == PointG1::ZERO
           (1 << 6).to_s(16) + '00' * (2 * PUBLIC_KEY_LENGTH - 1)
         else
           x, y = to_affine
-          x.value.to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
-            y.value.to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0')
+          BLS.num_to_hex(x, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(y, PUBLIC_KEY_LENGTH)
         end
       end
     end
@@ -358,16 +357,33 @@ module BLS
 
     def to_hex(compressed: false)
       raise ArgumentError, 'Not supported' if compressed
+
       if self == PointG2::ZERO
         (1 << 6).to_s(16) + '00' * (4 * PUBLIC_KEY_LENGTH - 1)
       else
         validate!
         x, y = to_affine.map(&:values)
-        x[1].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
-          x[0].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
-          y[1].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0') +
-          y[0].to_s(16).rjust(2 * PUBLIC_KEY_LENGTH, '0')
+        BLS.num_to_hex(x[1], PUBLIC_KEY_LENGTH) +
+          BLS.num_to_hex(x[0], PUBLIC_KEY_LENGTH) +
+          BLS.num_to_hex(y[1], PUBLIC_KEY_LENGTH) +
+          BLS.num_to_hex(y[0], PUBLIC_KEY_LENGTH)
       end
+    end
+
+    # Convert to signature with hex format.
+    # @return [String] signature with hex format.
+    def to_signature
+      if self == PointG2::ZERO
+        sum = POW_2_383 + POW_2_382
+        return BLS.num_to_hex(sum, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(0, PUBLIC_KEY_LENGTH)
+      end
+      validate!
+      x, y = to_affine.map(&:values)
+      tmp = y[1] > 0 ? y[1] * 2 : y[0] * 2
+      aflag1 = tmp / Curve::P
+      z1 = x[1] + aflag1 * POW_2_381 + POW_2_383
+      z2 = x[0]
+      BLS.num_to_hex(z1, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(z2, PUBLIC_KEY_LENGTH)
     end
 
     def validate!
