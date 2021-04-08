@@ -141,4 +141,20 @@ RSpec.describe 'bls12-381' do
       expect(BLS.verify_batch(agg, wrong_messages, public_keys)).to be false
     end
   end
+
+  it 'README.md test.' do
+    message = '64726e3da8'
+    private_keys = %w[18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4 ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c 16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5]
+    public_keys = private_keys.map { |p| BLS.get_public_key(p) }
+
+    signature2 = private_keys.map { |p| BLS.sign(message, p) }
+    agg_public_keys2 = BLS.aggregate_public_keys(public_keys)
+    agg_signatures2 = BLS.aggregate_signatures(signature2)
+    expect(BLS.verify(agg_signatures2, message, agg_public_keys2)).to be true
+
+    messages = %w[d2 0d98 05caf3]
+    signatures3 = private_keys.map.with_index { |p, i| BLS.sign(messages[i], p)}
+    agg_signatures3 = BLS.aggregate_signatures(signatures3)
+    expect(BLS.verify_batch(agg_signatures3, messages, public_keys)).to be true
+  end
 end

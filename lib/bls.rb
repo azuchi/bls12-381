@@ -55,6 +55,15 @@ module BLS
     exp == Fq12::ONE
   end
 
+  # Aggregate multiple public keys.
+  # @param [Array[String]] public_keys the list of public keys.
+  # @return [BLS::PointG1] aggregated public key.
+  def aggregate_public_keys(public_keys)
+    raise BLS::Error, 'Expected non-empty array.' if public_keys.empty?
+
+    public_keys.map { |p| BLS.norm_p1(p) }.inject(PointG1::ZERO) { |sum, p| sum + p }
+  end
+
   # Aggregate multiple signatures.
   # e(G, S) = e(G, sum(n)Si) = mul(n)(e(G, Si))
   # @param [Array[String|BLS::PointG2]] signatures multiple signatures.
