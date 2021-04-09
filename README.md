@@ -1,4 +1,4 @@
-# BLS12::381 for Ruby [![Build Status](https://github.com/azuchi/bls12-381/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/azuchi/bls12-381/actions/workflows/main.yml/badge.svg?branch=main) [![Gem Version](https://badge.fury.io/rb/bls12-381.svg)](https://badge.fury.io/rb/bls12-381) [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
+# BLS12-381 for Ruby [![Build Status](https://github.com/azuchi/bls12-381/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/azuchi/bls12-381/actions/workflows/main.yml/badge.svg?branch=main) [![Gem Version](https://badge.fury.io/rb/bls12-381.svg)](https://badge.fury.io/rb/bls12-381) [![MIT License](http://img.shields.io/badge/license-MIT-blue.svg?style=flat)](LICENSE)
 
 This library is a Ruby BLS12-381 implementation based on the JavaScript implementation [noble-bls12-381](https://github.com/paulmillr/noble-bls12-381).
 
