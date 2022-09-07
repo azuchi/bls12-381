@@ -157,4 +157,21 @@ RSpec.describe 'bls12-381' do
     agg_signatures3 = BLS.aggregate_signatures(signatures3)
     expect(BLS.verify_batch(agg_signatures3, messages, public_keys)).to be true
   end
+
+  describe '#paring' do
+    it 'has bilinear property' do
+      a = 123
+      b = 345
+
+      aP = BLS::PointG1.from_private_key(a)
+      bQ = BLS::PointG2.from_private_key(b)
+      paring1 = BLS.pairing(aP, bQ)
+
+      bP = BLS::PointG1.from_private_key(b)
+      aQ = BLS::PointG2.from_private_key(a)
+
+      paring2 = BLS.pairing(bP, aQ)
+      expect(paring1).to eq(paring2)
+    end
+  end
 end

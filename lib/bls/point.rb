@@ -341,6 +341,14 @@ module BLS
       point
     end
 
+    # Parse Point from private key.
+    # @param [String|Integer] private_key a private key with hex or number.
+    # @return [PointG1] G1Point corresponding to private keys.
+    # @raise [BLS::Error] Occur when the private key is zero.
+    def self.from_private_key(private_key)
+      BASE * BLS.normalize_priv_key(private_key)
+    end
+
     # Convert hash to PointG2
     # @param [String] message a hash with hex format.
     # @return [BLS::PointG2] point.
