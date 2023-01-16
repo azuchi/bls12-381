@@ -101,7 +101,7 @@ module BLS
     alias - subtract
 
     def multiply_unsafe(scalar)
-      n = scalar.is_a?(Fq) ? scalar.value : scalar
+      n = scalar.is_a?(Field) ? scalar.value : scalar
       raise PointError, 'Point#multiply: invalid scalar, expected positive integer' if n <= 0
 
       p = zero
@@ -151,7 +151,7 @@ module BLS
 
     # Constant time multiplication. Uses wNAF.
     def multiply(scalar)
-      n = scalar.is_a?(Fq) ? scalar.value : scalar
+      n = scalar.is_a?(Field) ? scalar.value : scalar
       raise PointError, 'Invalid scalar, expected positive integer' if n <= 0
       raise PointError, "Scalar has more bits than maxBits, shouldn't happen" if n.bit_length > max_bits
 
