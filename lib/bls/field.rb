@@ -63,6 +63,10 @@ module BLS
       multiply(v)
     end
     alias / div
+
+    def to_s
+      value.to_s
+    end
   end
 
   # Finite field over q.
