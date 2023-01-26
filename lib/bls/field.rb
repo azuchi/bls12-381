@@ -67,6 +67,11 @@ module BLS
     def to_s
       value.to_s
     end
+
+    def ==(other)
+      return false unless other.is_a?(self.class)
+      value == other.value
+    end
   end
 
   # Finite field over q.
