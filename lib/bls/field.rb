@@ -13,10 +13,6 @@ module BLS
       self.class.new(-value)
     end
 
-    def ==(other)
-      value == other.value
-    end
-
     def invert
       x0 = 1
       x1 = 0
@@ -84,7 +80,7 @@ module BLS
     attr_reader :value
 
     def initialize(value)
-      raise ArgumentError, 'Invalid value.' unless value.is_a?(Integer)
+      raise ArgumentError, 'value must be Integer.' unless value.is_a?(Integer)
 
       @value = BLS.mod(value, ORDER)
     end
@@ -103,7 +99,7 @@ module BLS
     attr_reader :value
 
     def initialize(value)
-      raise ArgumentError, 'Invalid value.' unless value.is_a?(Integer)
+      raise ArgumentError, 'value must be Integer.' unless value.is_a?(Integer)
 
       @value = BLS.mod(value, ORDER)
     end
