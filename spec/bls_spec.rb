@@ -160,8 +160,8 @@ RSpec.describe 'bls12-381' do
 
   describe '#paring' do
     it 'has bilinear property' do
-      a = 123
-      b = 345
+      a = SecureRandom.bytes(32).unpack1('H*').to_i(16)
+      b =  SecureRandom.bytes(32).unpack1('H*').to_i(16)
 
       aP = BLS::PointG1.from_private_key(a)
       bQ = BLS::PointG2.from_private_key(b)
