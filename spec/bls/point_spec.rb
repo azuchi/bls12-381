@@ -310,4 +310,24 @@ RSpec.describe 'bls12-381 Point' do
       end
     end
   end
+
+  describe 'compress/decompress' do
+    it do
+      10.times do
+        priv = SecureRandom.hex(32)
+        p1 = BLS::PointG1.from_private_key(priv)
+        compressed_p1 = p1.to_hex(compressed: true)
+        uncompressed_p1 = p1.to_hex
+        expect(BLS::PointG1.from_hex(compressed_p1)).to eq(p1)
+        expect(BLS::PointG1.from_hex(uncompressed_p1)).to eq(p1)
+
+        priv = SecureRandom.hex(32)
+        p2 = BLS::PointG2.from_private_key(priv)
+        compressed_p2 = p2.to_hex(compressed: true)
+        uncompressed_p2 = p2.to_hex
+        expect(BLS::PointG2.from_hex(compressed_p2)).to eq(p2)
+        expect(BLS::PointG2.from_hex(uncompressed_p2)).to eq(p2)
+      end
+    end
+  end
 end

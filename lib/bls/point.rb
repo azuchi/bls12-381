@@ -4,6 +4,11 @@ require 'bigdecimal'
 
 module BLS
 
+  # Point serialization flags
+  POINT_COMPRESSION_FLAG = 0x80
+  POINT_INFINITY_FLAG = 0x40
+  POINT_Y_FLAG = 0x20
+
   class PointError < StandardError; end
 
   # Abstract Point class that consist of projective coordinates.
@@ -226,6 +231,9 @@ module BLS
 
   class PointG1 < ProjectivePoint
 
+    KEY_SIZE_COMPRESSED = 48
+    KEY_SIZE_UNCOMPRESSED = 96
+
     BASE = PointG1.new(Fq.new(Curve::G_X), Fq.new(Curve::G_Y), Fq::ONE)
     ZERO = PointG1.new(Fq::ONE, Fq::ONE, Fq::ZERO)
     MAX_BITS = Fq::MAX_BITS
@@ -237,7 +245,7 @@ module BLS
     def self.from_hex(hex)
       bytes = [hex].pack('H*')
       point = case bytes.bytesize
-              when 48
+              when KEY_SIZE_COMPRESSED
                 compressed_value = hex.to_i(16)
                 b_flag = BLS.mod(compressed_value, POW_2_383) / POW_2_382
                 return ZERO if b_flag == 1
@@ -250,7 +258,7 @@ module BLS
                 a_flag = BLS.mod(compressed_value, POW_2_382) / POW_2_381
                 y = Curve::P - y unless ((y * 2) / Curve::P) == a_flag
                 PointG1.new(Fq.new(x), Fq.new(y), Fq::ONE)
-              when 96
+              when KEY_SIZE_UNCOMPRESSED
                 return ZERO unless (bytes[0].unpack1('H*').to_i(16) & (1 << 6)).zero?
 
                 x = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
@@ -313,29 +321,58 @@ module BLS
 
     attr_accessor :precomputes
 
+    KEY_SIZE_COMPRESSED = 96
+    KEY_SIZE_UNCOMPRESSED = 192
+
     MAX_BITS = Fq2::MAX_BITS
     BASE = PointG2.new(Fq2.new(Curve::G2_X), Fq2.new(Curve::G2_Y), Fq2::ONE)
     ZERO = PointG2.new(Fq2::ONE, Fq2::ONE, Fq2::ZERO)
 
-    # Parse PointG1 from form hex.
+    # Parse PointG2 from form hex.
+    # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-07#section-appendix.c
     # @param [String] hex hex value of PointG2. Currently, only uncompressed formats(196 bytes) are supported.
-    # @return [BLS::PointG2] PointG2 object.
+    # @return [BLS::PointG2] PointG2.
     # @raise [BLS::PointError]
     def self.from_hex(hex)
       bytes = [hex].pack('H*')
-      point = case bytes.bytesize
-              when 96
-                raise PointError, 'Compressed format not supported yet.'
-              when 192
-                return ZERO unless (bytes[0].unpack1('H*').to_i(16) & (1 << 6)).zero?
+      m_byte = bytes[0].unpack1('C')& 0xe0
+      if [0x20, 0x60, 0xe0].include?(m_byte)
+        raise PointError, "Invalid encoding flag: #{m_byte.to_s(16)}"
+      end
 
+      c_bit = m_byte & POINT_COMPRESSION_FLAG # compression flag
+      i_bit = m_byte & POINT_INFINITY_FLAG # infinity flag
+      s_bit = m_byte & POINT_Y_FLAG # y coordinate sign flag
+      bytes[0] = [bytes[0].unpack1('C') & 0x1f].pack('C') # set flag to 0
+
+      if i_bit == POINT_INFINITY_FLAG && bytes.unpack1('H*').to_i(16) > 0
+        raise PointError, 'Invalid point, infinity point should be all 0.'
+      end
+
+      point = if bytes.bytesize == KEY_SIZE_COMPRESSED && c_bit == POINT_COMPRESSION_FLAG # compress format
+                return ZERO if i_bit == POINT_INFINITY_FLAG
+                x1 = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
+                x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
+                x = Fq2.new([x0, x1])
+                right = x ** 3 + Fq2.new(Curve::B2)
+                y = right.sqrt
+                raise PointError, 'Invalid compressed G2 point' unless y
+                bit_y = if y.coeffs[1].value == 0
+                          (y.coeffs[0].value * 2) / Curve::P
+                        else
+                          (y.coeffs[1].value * 2) / Curve::P == 1 ? 1 : 0
+                        end
+                y = s_bit > 0 && bit_y > 0 ? y : y.negate
+                PointG2.new(x, y, Fq2::ONE)
+              elsif bytes.bytesize == KEY_SIZE_UNCOMPRESSED && c_bit != POINT_COMPRESSION_FLAG # uncompressed format
+                return ZERO if i_bit == POINT_INFINITY_FLAG
                 x1 = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
                 x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
                 y1 = bytes[(2 * PUBLIC_KEY_LENGTH)...(3 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
                 y0 = bytes[(3 * PUBLIC_KEY_LENGTH)..-1].unpack1('H*').to_i(16)
                 PointG2.new(Fq2.new([x0, x1]), Fq2.new([y0, y1]), Fq2::ONE)
               else
-                raise PointError, 'Invalid uncompressed point G2, expected 192 bytes.'
+                raise PointError, 'Invalid point G2, expected 96/192 bytes.'
               end
       point.validate!
       point
@@ -363,18 +400,36 @@ module BLS
       BLS.clear_cofactor_g2(r)
     end
 
+    # Serialize pont as hex value.
+    # @param [Boolean] compressed whether to compress the point.
+    # @return [String] hex value of point.
     def to_hex(compressed: false)
-      raise ArgumentError, 'Not supported' if compressed
-
-      if self == PointG2::ZERO
-        (1 << 6).to_s(16) + '00' * (4 * PUBLIC_KEY_LENGTH - 1)
+      if compressed
+        if zero?
+          x1 = POW_2_383 + POW_2_382
+          x0= 0
+        else
+          x, y = to_affine
+          flag = if y.coeffs[1].value == 0
+                   (y.coeffs[0].value * 2) / Curve::P
+                 else
+                   ((y.coeffs[1].value * 2) / Curve::P).zero? ? 0 : 1
+                 end
+          x1 = x.coeffs[1].value + flag * POW_2_381 + POW_2_383
+          x0 = x.coeffs[0].value
+        end
+        BLS.num_to_hex(x1, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(x0, PUBLIC_KEY_LENGTH)
       else
-        validate!
-        x, y = to_affine.map(&:values)
-        BLS.num_to_hex(x[1], PUBLIC_KEY_LENGTH) +
-          BLS.num_to_hex(x[0], PUBLIC_KEY_LENGTH) +
-          BLS.num_to_hex(y[1], PUBLIC_KEY_LENGTH) +
-          BLS.num_to_hex(y[0], PUBLIC_KEY_LENGTH)
+        if self == PointG2::ZERO
+          (1 << 6).to_s(16) + '00' * (4 * PUBLIC_KEY_LENGTH - 1)
+        else
+          validate!
+          x, y = to_affine.map(&:values)
+          BLS.num_to_hex(x[1], PUBLIC_KEY_LENGTH) +
+            BLS.num_to_hex(x[0], PUBLIC_KEY_LENGTH) +
+            BLS.num_to_hex(y[1], PUBLIC_KEY_LENGTH) +
+            BLS.num_to_hex(y[0], PUBLIC_KEY_LENGTH)
+        end
       end
     end
 

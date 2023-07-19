@@ -232,6 +232,21 @@ module BLS
       Fq2.new([a * b, c * c1])
     end
 
+    def sqrt
+      candidate = pow((Fq2::ORDER + 8) / 16)
+      check = candidate.square / self
+      r = ROOTS_OF_UNITY
+      divisor = [r[0], r[2], r[4], r[6]].find { |x| x == check }
+      return nil unless divisor
+      root = r[r.index(divisor) / 2]
+      raise Error, 'Invalid root' unless root
+      x1 = candidate / root
+      x2 = x1.negate
+      re1, im1 = x1.coeffs
+      re2, im2 = x2.coeffs
+      im1.value > im2.value || (im1 == im2 && re1.value > re2.value) ? x1 : x2
+    end
+
     def multiply(other)
       return Fq2.new(coeffs.map { |c| c * other }) if other.is_a?(Integer)
 

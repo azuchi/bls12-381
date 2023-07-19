@@ -1,7 +1,5 @@
 # frozen_string_literal: true
 
-require 'securerandom'
-
 RSpec.describe 'bls12-381' do
 
   before do

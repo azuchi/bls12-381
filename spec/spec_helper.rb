@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'bls'
+require 'securerandom'
 
 NUM_RUNS = 10
 
