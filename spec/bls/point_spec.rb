@@ -330,4 +330,42 @@ RSpec.describe 'bls12-381 Point' do
       end
     end
   end
+
+  describe 'zkCrypto vectors' do
+    it do
+      vectors = JSON.parse(fixture_file('converted.json'))
+      test_g1(vectors['G1_Compressed'], true)
+      test_g1(vectors['G1_Uncompressed'], false)
+      test_g2(vectors['G2_Compressed'], true)
+      test_g2(vectors['G2_Uncompressed'], false)
+    end
+  end
+
+  def test_g1(vectors, compressed)
+    p1 = BLS::PointG1::ZERO
+    vectors.each.with_index do |v, i|
+      p = BLS::PointG1.from_hex(v)
+      expect(p.to_hex(compressed: compressed)).to eq(v)
+      expect(p).to eq(p1)
+      p1 += BLS::PointG1::BASE
+      if i > 0
+        expect((BLS::PointG1::BASE * i).to_hex(compressed: compressed)).to eq(v)
+        expect(BLS::PointG1::BASE.multiply_unsafe(i).to_hex(compressed: compressed)).to eq(v)
+      end
+    end
+  end
+
+  def test_g2(vectors, compressed)
+    p2 = BLS::PointG2::ZERO
+    vectors.each.with_index do |v, i|
+      p = BLS::PointG2.from_hex(v)
+      expect(p.to_hex(compressed: compressed)).to eq(v)
+      expect(p).to eq(p2)
+      p2 += BLS::PointG2::BASE
+      if i > 0
+        expect((BLS::PointG2::BASE * i).to_hex(compressed: compressed)).to eq(v)
+        expect(BLS::PointG2::BASE.multiply_unsafe(i).to_hex(compressed: compressed)).to eq(v)
+      end
+    end
+  end
 end

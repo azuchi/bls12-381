@@ -2,6 +2,7 @@
 
 require 'bls'
 require 'securerandom'
+require 'json'
 
 NUM_RUNS = 10
 
