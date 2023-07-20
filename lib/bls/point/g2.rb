@@ -8,9 +8,9 @@ module BLS
     KEY_SIZE_COMPRESSED = 96
     KEY_SIZE_UNCOMPRESSED = 192
 
-    MAX_BITS = Fq2::MAX_BITS
-    BASE = PointG2.new(Fq2.new(Curve::G2_X), Fq2.new(Curve::G2_Y), Fq2::ONE)
-    ZERO = PointG2.new(Fq2::ONE, Fq2::ONE, Fq2::ZERO)
+    MAX_BITS = Fp2::MAX_BITS
+    BASE = PointG2.new(Fp2.new(Curve::G2_X), Fp2.new(Curve::G2_Y), Fp2::ONE)
+    ZERO = PointG2.new(Fp2::ONE, Fp2::ONE, Fp2::ZERO)
 
     # Parse PointG2 from form hex.
     # https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-pairing-friendly-curves-07#section-appendix.c
@@ -37,8 +37,8 @@ module BLS
                 return ZERO if i_bit == POINT_INFINITY_FLAG
                 x1 = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
                 x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
-                x = Fq2.new([x0, x1])
-                right = x ** 3 + Fq2.new(Curve::B2)
+                x = Fp2.new([x0, x1])
+                right = x ** 3 + Fp2.new(Curve::B2)
                 y = right.sqrt
                 raise PointError, 'Invalid compressed G2 point' unless y
                 bit_y = if y.coeffs[1].value == 0
@@ -47,14 +47,14 @@ module BLS
                           (y.coeffs[1].value * 2) / Curve::P == 1 ? 1 : 0
                         end
                 y = s_bit > 0 && bit_y > 0 ? y : y.negate
-                PointG2.new(x, y, Fq2::ONE)
+                PointG2.new(x, y, Fp2::ONE)
               elsif bytes.bytesize == KEY_SIZE_UNCOMPRESSED && c_bit != POINT_COMPRESSION_FLAG # uncompressed format
                 return ZERO if i_bit == POINT_INFINITY_FLAG
                 x1 = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
                 x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
                 y1 = bytes[(2 * PUBLIC_KEY_LENGTH)...(3 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
                 y0 = bytes[(3 * PUBLIC_KEY_LENGTH)..-1].unpack1('H*').to_i(16)
-                PointG2.new(Fq2.new([x0, x1]), Fq2.new([y0, y1]), Fq2::ONE)
+                PointG2.new(Fp2.new([x0, x1]), Fp2.new([y0, y1]), Fp2::ONE)
               else
                 raise PointError, 'Invalid point G2, expected 96/192 bytes.'
               end
@@ -134,12 +134,12 @@ module BLS
     end
 
     def validate!
-      b = Fq2.new(Curve::B2)
+      b = Fp2.new(Curve::B2)
       return if zero?
 
       left = y.pow(2) * z - x.pow(3)
       right = b * z.pow(3)
-      raise PointError, 'Invalid point: not on curve over Fq2' unless left == right
+      raise PointError, 'Invalid point: not on curve over Fp2' unless left == right
     end
 
     def clear_pairing_precomputes
@@ -156,7 +156,7 @@ module BLS
     private
 
     def calc_pairing_precomputes(x, y)
-      q_x, q_y, q_z = [x, y, Fq2::ONE]
+      q_x, q_y, q_z = [x, y, Fp2::ONE]
       r_x, r_y, r_z = [q_x, q_y, q_z]
       ell_coeff = []
       i = BLS_X_LEN - 2

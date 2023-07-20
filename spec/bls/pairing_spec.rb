@@ -11,7 +11,7 @@ RSpec.describe 'pairing' do
   it 'should create negative G1 pairing' do
     p1 = BLS.pairing(g1, g2)
     p2 = BLS.pairing(g1.negate, g2)
-    expect(p1 * p2).to eq(BLS::Fq12::ONE)
+    expect(p1 * p2).to eq(BLS::Fp12::ONE)
   end
 
   it 'should create negative G2 pairing' do
@@ -23,7 +23,7 @@ RSpec.describe 'pairing' do
   it 'should create proper pairing output order' do
     p1 = BLS.pairing(g1, g2)
     p2 = p1**curve_order
-    expect(p2).to eq(BLS::Fq12::ONE)
+    expect(p2).to eq(BLS::Fp12::ONE)
   end
 
   it 'should create right pairing with bilinearity on G1' do
@@ -55,7 +55,7 @@ RSpec.describe 'pairing' do
 
   it 'test pairing results against https://github.com/zkcrypto/pairing' do
     p1 = BLS.pairing(g1, g2)
-    expect(p1).to eq(BLS::Fq12.from_tuple([
+    expect(p1).to eq(BLS::Fp12.from_tuple([
       0x1250ebd871fc0a92a7b2d83168d0d727272d441befa15c503dd8e90ce98db3e7b6d194f60839c508a84305aaca1789b6,
       0x089a1c5b46e5110b86750ec6a532348868a84045483c92b7af5af689452eafabf1a8943e50439f1d59882a98eaa0170f,
       0x1368bb445c7c2d209703f239689ce34c0378a68e72a6b3b216da0e22a5031b54ddff57309396b38c881c4c849ec23e87,
@@ -71,7 +71,7 @@ RSpec.describe 'pairing' do
   end
 
   it 'test final_exponentiate' do
-    p1 = BLS::Fq12.from_tuple([
+    p1 = BLS::Fp12.from_tuple([
       690392658038414015999440694435086329841032295415825549843130960252222448232974816207293269712691075396080336239827,
       1673244384695948045466836192250093912021245353707563547917201356526057153141766171738038843400145227470982267854187,
       2521701268183363687370344286906817113258663667920912959304741393298699171323721428784215127759799558353547063603791,
@@ -84,7 +84,7 @@ RSpec.describe 'pairing' do
       1011304421692205285006791165988839444878224012950060115964565336021949568250312574884591704110914940911299353851697,
       2263326825947267463771741379953930448565128050766360539694662323032637428903113943692772437175107441778689006777591,
       2975309739982292949472410540684863862532494446476557866806093059134361887381947558323102825622690771432446161524562])
-    expect(p1.final_exponentiate).to eq(BLS::Fq12.from_tuple([
+    expect(p1.final_exponentiate).to eq(BLS::Fp12.from_tuple([
       0x09d72c189ba2fd4b09b63da857f321b791b45f8ec589858bc6d41c8f4eb05244ad7a22aea1119a958d890a19f6caceda,
       0x153f579b44547ee81c5d1603571b4776a065e86b4e3da0bba32afedafcca10f0a40005e63c9408785761da689b4b7338,
       0x00bb1efcca23009c3638ae9ec0ee5153fa94b4edca88c3438029bcd5909e838da44483f0bfb5877609dace3bfa7d4ff3,

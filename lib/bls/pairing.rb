@@ -6,7 +6,7 @@ module BLS
   # @param [BLS::PointG1] p
   # @param [BLS::PointG2] q
   # @param [Boolean] with_final_exp
-  # @return [BLS::Fq12]
+  # @return [BLS::Fp12]
   # @raise [BLS::PairingError] Occur when p.zero? or q.zero?
   # @raise [ArgumentError]
   def pairing(p, q, with_final_exp: true)

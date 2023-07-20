@@ -53,26 +53,26 @@ module BLS
         u
       end
 
-      # Optimized SWU Map - FQ2 to G2': y^2 = x^3 + 240i * x + 1012 + 1012i
+      # Optimized SWU Map - Fp2 to G2': y^2 = x^3 + 240i * x + 1012 + 1012i
       def map_to_curve_sswu(t)
-        iso_3_a = Fq2.new([0, 240])
-        iso_3_b = Fq2.new([1012, 1012])
-        iso_3_z = Fq2.new([-2, -1])
-        t = Fq2.new(t) if t.is_a?(Array)
+        iso_3_a = Fp2.new([0, 240])
+        iso_3_b = Fp2.new([1012, 1012])
+        iso_3_z = Fp2.new([-2, -1])
+        t = Fp2.new(t) if t.is_a?(Array)
         t2 = t**2
         iso_3_z_t2 = iso_3_z * t2
         ztzt = iso_3_z_t2 + iso_3_z_t2**2
         denominator = (iso_3_a * ztzt).negate
-        numerator = iso_3_b * (ztzt + Fq2::ONE)
+        numerator = iso_3_b * (ztzt + Fp2::ONE)
         denominator = iso_3_z * iso_3_a if denominator.zero?
         v = denominator**3
         u = numerator**3 + iso_3_a * numerator * denominator**2 + iso_3_b * v
-        success, sqrt_candidate_or_gamma = BLS.sqrt_div_fq2(u, v)
+        success, sqrt_candidate_or_gamma = BLS.sqrt_div_fp2(u, v)
         y = success ? sqrt_candidate_or_gamma : nil
         sqrt_candidate_x1 = sqrt_candidate_or_gamma * t**3
         u = iso_3_z_t2**3 * u
         success2 = false
-        Fq2::ETAS.each do |eta|
+        Fp2::ETAS.each do |eta|
           eta_sqrt_candidate = eta * sqrt_candidate_x1
           temp = eta_sqrt_candidate**2 * v - u
           if temp.zero? && !success && !success2
@@ -91,7 +91,7 @@ module BLS
       # 3-isogeny map from E' to E
       # Converts from Jacobi (xyz) to Projective (xyz) coordinates.
       def isogeny_map(x, y, z)
-        mapped = Array.new(4, Fq2::ZERO)
+        mapped = Array.new(4, Fp2::ZERO)
         z_powers = [z, z**2, z**3]
         ISOGENY_COEFFICIENTS.each.with_index do |k, i|
           mapped[i] = k[-1]

@@ -17,25 +17,25 @@ RSpec.configure do |config|
   end
 end
 
-def create_fq2_items(amount)
-  return BLS::Fq2.new([rand(1..BLS::Fq::ORDER), rand(1..BLS::Fq::ORDER)]) if amount == 1
+def create_fp2_items(amount)
+  return BLS::Fp2.new([rand(1..BLS::Fp::ORDER), rand(1..BLS::Fp::ORDER)]) if amount == 1
 
   amount.times.map do
-    BLS::Fq2.new([rand(1..BLS::Fq::ORDER), rand(1..BLS::Fq::ORDER)])
+    BLS::Fp2.new([rand(1..BLS::Fp::ORDER), rand(1..BLS::Fp::ORDER)])
   end
 end
 
-def create_fq12_items(amount)
+def create_fp12_items(amount)
   result = amount.times.map do
-    items = 12.times.map { rand(1..BLS::Fq::ORDER) }
-    BLS::Fq12.from_tuple(items)
+    items = 12.times.map { rand(1..BLS::Fp::ORDER) }
+    BLS::Fp12.from_tuple(items)
   end
   result.size == 1 ? result.first : result
 end
 
 def create_point_g1_items(amount)
   result = amount.times.map do
-    items = 3.times.map { BLS::Fq.new(rand(1..BLS::Fq::ORDER)) }
+    items = 3.times.map { BLS::Fp.new(rand(1..BLS::Fp::ORDER)) }
     BLS::PointG1.new(items[0], items[1], items[2])
   end
   result.size == 1 ? result.first : result
@@ -43,7 +43,7 @@ end
 
 def create_point_g2_items(amount)
   result = amount.times.map do
-    items = create_fq2_items(3)
+    items = create_fp2_items(3)
     BLS::PointG2.new(items[0], items[1], items[2])
   end
   result.size == 1 ? result.first : result

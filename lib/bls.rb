@@ -62,7 +62,7 @@ module BLS
             BLS.pairing(signature, g, with_final_exp: false)
           end
     exp = (egs * ephm).final_exponentiate
-    exp == Fq12::ONE
+    exp == Fp12::ONE
   end
 
   # Aggregate multiple public keys.
@@ -104,7 +104,7 @@ module BLS
     end
     sig = BLS.norm_p2(signature)
     paired << BLS.pairing(PointG1::BASE.negate, sig, with_final_exp: false)
-    product = paired.inject(Fq12::ONE) { |a, b| a * b }
-    product.final_exponentiate == Fq12::ONE
+    product = paired.inject(Fp12::ONE) { |a, b| a * b }
+    product.final_exponentiate == Fp12::ONE
   end
 end
