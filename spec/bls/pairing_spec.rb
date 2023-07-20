@@ -98,4 +98,19 @@ RSpec.describe 'pairing' do
       0x00c9dea49cc3e1c8be938f707bbb0239e8f960fa46617877f90b3212fc3f5890999082b9c2262c8543a278136f34b5db,
       0x08f574e635870b8f4ad8c18d162055ab6136db296ad5f25151244e3b1ce0d81389b9d1752a46af018e8fb1ac01b683e1]))
   end
+
+  describe "Test Vector" do
+    it do
+      vectors = JSON.parse(fixture_file('pairing.json'))
+      p1 = BLS::PointG1::BASE
+      p2 = BLS::PointG2::BASE
+      vectors.each do |vector|
+        result = BLS.pairing(p1, p2)
+        expected = vector.scan(/.{1,#{96}}/).reverse.join
+        expect(result.to_hex).to eq(expected)
+        p1 += BLS::PointG1::BASE
+        p2 += BLS::PointG2::BASE
+      end
+    end
+  end
 end

@@ -76,6 +76,7 @@ module BLS
 
     ORDER = BLS::Curve::P
     MAX_BITS = Curve::P.bit_length
+    BYTES_LEN = (MAX_BITS / 8.0).ceil
 
     attr_reader :value
 
@@ -88,6 +89,13 @@ module BLS
     ZERO = Fp.new(0)
     ONE = Fp.new(1)
 
+    def to_bytes
+      [to_hex].pack('H*')
+    end
+
+    def to_hex
+      value.to_s(16).rjust(2 * BYTES_LEN, '0')
+    end
   end
 
   # Finite field over r.
@@ -163,6 +171,18 @@ module BLS
 
     def conjugate
       self.class.new([coeffs[0], coeffs[1].negate])
+    end
+
+    # Convert to byte string.
+    # @return [String]
+    def to_bytes
+      [to_hex].pack('H*')
+    end
+
+    # Convert to hex string.
+    # @return [String]
+    def to_hex
+      coeffs.map(&:to_hex).join
     end
   end
 
