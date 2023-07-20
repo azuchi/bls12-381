@@ -76,7 +76,7 @@ RSpec.describe 'bls12-381' do
     vectors.split("\n").map { |v| v.split(':') }
   end
 
-  it 'should produce correct signatures vectors)' do
+  it 'should produce correct signatures vectors' do
     g2_vectors.each do |v|
       priv, msg, expected = v
       sig = BLS.sign(msg, priv)
@@ -171,5 +171,56 @@ RSpec.describe 'bls12-381' do
       paring2 = BLS.pairing(bP, aQ)
       expect(paring1).to eq(paring2)
     end
+  end
+
+  context 'Public key is G2 and Signature is G2' do
+    context 'valid' do
+      it do
+        test_bls_signature(
+          true,
+          "ace9fcdd9bc977e05d6328f889dc4e7c99114c737a494653cb27a1f55c06f4555e0f160980af5ead098acc195010b2f7",
+          "0d69632d73746174652d726f6f74e6c01e909b4923345ce5970962bcfe3004bfd8474a21dae28f50692502f46d90",
+          "814c0e6ec71fab583b08bd81373c255c3c371b2e84863c98a4f1e08b74235d14fb5d9c0cd546d9685f913a0c0b2cc5341583bf4b4392e467db96d65b9bb4cb717112f8472e0d5a4d14505ffd7484b01291091c5f87b98883463f98091a0baaae");
+        test_bls_signature(
+          true,
+          "89a2be21b5fa8ac9fab1527e041327ce899d7da971436a1f2165393947b4d942365bfe5488710e61a619ba48388a21b1",
+          "0d69632d73746174652d726f6f74b294b418b11ebe5dd7dd1dcb099e4e0372b9a42aef7a7a37fb4f25667d705ea9",
+          "9933e1f89e8a3c4d7fdcccdbd518089e2bd4d8180a261f18d9c247a52768ebce98dc7328a39814a8f911086a1dd50cbe015e2a53b7bf78b55288893daa15c346640e8831d72a12bdedd979d28470c34823b8d1c3f4795d9c3984a247132e94fe");
+        test_bls_signature(
+          true,
+          "b1dd133edb8c9ee98e78449b5537e1b44e51d7807cbcf15b1f11eb08fc326da3a4e9b639131e985c01e27e1750ed7253",
+          "0d69632d73746174652d726f6f742b2c26a884dbe39b122a1e4bf9bec9fac8d92b6d8e9f6d03f35b0d78cb3c3e1c",
+          "b31b406c9f6648695a88154ae2e4f5fe87883d4ad81c2844c5571b2d91d401cdd40836e763a7c18dccb84629b0d808f7142c3175bc8231dc09bd53637efd6f2568801385ec973d34e6eef9c8c8280a9f4a114163a43a8540941ba367f0c7cb28");
+      end
+    end
+
+    context 'invalid' do
+      it do
+        test_bls_signature(
+          false,
+          "89a2be21b5fa8ac9fab1527e041327ce899d7da971436a1f2165393947b4d942365bfe5488710e61a619ba48388a21b1",
+          "0d69632d73746174652d726f6f74e6c01e909b4923345ce5970962bcfe3004bfd8474a21dae28f50692502f46d90",
+          "814c0e6ec71fab583b08bd81373c255c3c371b2e84863c98a4f1e08b74235d14fb5d9c0cd546d9685f913a0c0b2cc5341583bf4b4392e467db96d65b9bb4cb717112f8472e0d5a4d14505ffd7484b01291091c5f87b98883463f98091a0baaae");
+
+        test_bls_signature(
+          false,
+          "ace9fcdd9bc977e05d6328f889dc4e7c99114c737a494653cb27a1f55c06f4555e0f160980af5ead098acc195010b2f7",
+          "0d69632d73746174652d726f6f74b294b418b11ebe5dd7dd1dcb099e4e0372b9a42aef7a7a37fb4f25667d705ea9",
+          "9933e1f89e8a3c4d7fdcccdbd518089e2bd4d8180a261f18d9c247a52768ebce98dc7328a39814a8f911086a1dd50cbe015e2a53b7bf78b55288893daa15c346640e8831d72a12bdedd979d28470c34823b8d1c3f4795d9c3984a247132e94fe");
+
+        # sig is not a valid point
+        test_bls_signature(
+          false,
+          "ace9fcdd9bc977e05d6328f889dc4e7c99114c737a494653cb27a1f55c06f4555e0f160980af5ead098acc195010b2f8",
+          "0d69632d73746174652d726f6f74e6c01e909b4923345ce5970962bcfe3004bfd8474a21dae28f50692502f46d90",
+          "814c0e6ec71fab583b08bd81373c255c3c371b2e84863c98a4f1e08b74235d14fb5d9c0cd546d9685f913a0c0b2cc5341583bf4b4392e467db96d65b9bb4cb717112f8472e0d5a4d14505ffd7484b01291091c5f87b98883463f98091a0baaae");
+      end
+    end
+  end
+
+  def test_bls_signature(result, sig, msg, pubkey)
+    sig = BLS::PointG1.from_hex(sig)
+    pubkey = BLS::PointG2.from_hex(pubkey)
+    expect(BLS.verify(sig, msg, pubkey)).to eq(result)
   end
 end

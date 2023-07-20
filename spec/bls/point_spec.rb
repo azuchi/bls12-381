@@ -306,7 +306,7 @@ RSpec.describe 'bls12-381 Point' do
                    0x19fbb8b214bd1368a21fbe627574a25e0157459480bbd3a3e7febe5fec82b9ef1cdf49d4c2f12e68d44429403106aede]))
       ]
       points.each do |p|
-        expect(p.multiply_unsafe(BLS::Curve::H_EFF)).to eq(BLS.clear_cofactor_g2(p))
+        expect(p.multiply_unsafe(BLS::Curve::H_EFF)).to eq(BLS::PointG2.clear_cofactor(p))
       end
     end
   end
