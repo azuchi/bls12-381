@@ -38,7 +38,9 @@ module BLS
     PointG1.from_private_key(private_key)
   end
 
-  # Verify BLS signature.
+  # Verify BLS signature. Verify one of the following:
+  # * Public key is a point on G1, signature is a point on G2 or
+  # * Public key is a point on G2, signature is a point on G1.
   # @param [BLS::PointG1|BLS::PointG2] signature
   # @param [String] message Message digest(hash value with hex format) to be verified.
   # @param [BLS::PointG2|BLS::PointG1] public_key Public key with hex format or PointG1.
