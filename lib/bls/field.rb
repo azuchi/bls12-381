@@ -115,10 +115,6 @@ module BLS
     ZERO = Fr.new(0)
     ONE = Fr.new(1)
 
-    def legendre
-      pow((order - 1) / 2)
-    end
-
   end
 
   # Module for a field over polynomial.

@@ -68,14 +68,14 @@ module BLS
 
   # Normalize private key.
   # @param [String|Integer] private_key a private key with hex or number.
-  # @return [BLS::Fp] private key field.
+  # @return [BLS::Fr] Normalized private key.
   # @raise [BLS::Error] Occur when the private key is zero.
   def normalize_priv_key(private_key)
     k = private_key.is_a?(String) ? private_key.to_i(16) : private_key
-    fp = Fp.new(k)
-    raise BLS::Error, 'Private key cannot be 0' if fp.zero?
+    fr = Fr.new(k)
+    raise BLS::Error, 'Private key cannot be 0' if fr.zero?
 
-    fp
+    fr
   end
 
   # Convert number to +byte_length+ bytes hex string.
