@@ -72,10 +72,8 @@ module BLS
   # @raise [BLS::Error] Occur when the private key is zero.
   def normalize_priv_key(private_key)
     k = private_key.is_a?(String) ? private_key.to_i(16) : private_key
-    fr = Fr.new(k)
-    raise BLS::Error, 'Private key cannot be 0' if fr.zero?
-
-    fr
+    raise BLS::Error, "Private key must be 0 < private_key < #{Fr::ORDER}" if k <= 0
+    Fr.new(k)
   end
 
   # Convert number to +byte_length+ bytes hex string.
