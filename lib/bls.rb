@@ -86,44 +86,67 @@ module BLS
   end
 
   # Aggregate multiple public keys.
-  # @param [Array[String]] public_keys the list of public keys.
-  # @return [BLS::PointG1] aggregated public key.
+  # @param [Array[BLS::PointG1]|Array[BLS::PointG2]] public_keys the list of public keys.
+  # @return [BLS::PointG1|BLS::PointG2] aggregated public key.
   def aggregate_public_keys(public_keys)
     raise BLS::Error, 'Expected non-empty array.' if public_keys.empty?
-
-    public_keys.map { |p| BLS.norm_p1(p) }.inject(PointG1::ZERO) { |sum, p| sum + p }
+    g1_flag = public_keys.first.is_a?(PointG1)
+    sum = g1_flag ? PointG1::ZERO : PointG2::ZERO
+    public_keys.each do |pubkey|
+      if g1_flag && !pubkey.is_a?(PointG1) || !g1_flag && !pubkey.is_a?(PointG2)
+        raise BLS::Error, 'Point G1 and G2 are mixed.'
+      end
+      sum += pubkey
+    end
+    sum
   end
 
   # Aggregate multiple signatures.
   # e(G, S) = e(G, sum(n)Si) = mul(n)(e(G, Si))
-  # @param [Array[String|BLS::PointG2]] signatures multiple signatures.
-  # @return [BLS::PointG2] aggregated signature.
+  # @param [Array[BLS::PointG2]|Array[BLS::PointG2]] signatures multiple signatures.
+  # @return [BLS::PointG2|BLS::PointG1] aggregated signature.
   def aggregate_signatures(signatures)
     raise BLS::Error, 'Expected non-empty array.' if signatures.empty?
 
-    signatures.map { |s| BLS.norm_p2(s) }.inject(PointG2::ZERO) { |sum, s| sum + s }
+    g2_flag = signatures.first.is_a?(PointG2)
+    sum = g2_flag ? PointG2::ZERO : PointG1::ZERO
+    signatures.each do |signature|
+      if g2_flag && !signature.is_a?(PointG2) || !g2_flag && !signature.is_a?(PointG1)
+        raise BLS::Error, 'Signature G1 and G2 are mixed.'
+      end
+      sum += signature
+    end
+    sum
   end
 
   # Verify aggregated signature.
-  # @param [BLS::PointG2] signature aggregated signature.
+  # @param [BLS::PointG2|BLS::PointG1] signature aggregated signature(BLS::PointG2 or BLS::PointG1).
   # @param [Array[String]] messages the list of message.
-  # @param [Array[String|BLS::PointG1]] public_keys the list of public keys with hex or BLS::PointG1 format.
+  # @param [Array[BLS::PointG1]|Array[BLS::PointG2]] public_keys the list of public keys(BLS::PointG1 or BLS::PointG2).
   # @return [Boolean] verification result.
   def verify_batch(signature, messages, public_keys)
     raise BLS::Error, 'Expected non-empty array.' if messages.empty?
     raise BLS::Error, 'Public keys count should equal msg count.' unless messages.size == public_keys.size
 
-    n_message = messages.map { |m| BLS.norm_p2h(m) }
-    n_public_keys = public_keys.map { |p| BLS.norm_p1(p) }
-    paired = []
-    n_message.each do |message|
-      group_pubkey = n_message.each_with_index.inject(PointG1::ZERO)do|group_pubkey, (sub_message, i)|
-        sub_message == message ? group_pubkey + n_public_keys[i] : group_pubkey
+    sig_g2_flag = signature.is_a?(PointG2)
+    public_keys.each do |public_key|
+      if sig_g2_flag && !public_key.is_a?(PointG1) || !sig_g2_flag && !public_key.is_a?(PointG2)
+        raise BLS::Error, "Public key must be #{sig_g2_flag ? 'PointG1' : 'PointG2'}"
       end
-      paired << BLS.pairing(group_pubkey, message, with_final_exp: false)
     end
-    sig = BLS.norm_p2(signature)
-    paired << BLS.pairing(PointG1::BASE.negate, sig, with_final_exp: false)
+
+    n_message = messages.map { |m| sig_g2_flag ? BLS.norm_p2h(m) : BLS.norm_p1h(m)}
+    paired = []
+    zero = sig_g2_flag ? PointG1::ZERO : PointG2::ZERO
+    n_message.each do |message|
+      group_pubkey = n_message.each_with_index.inject(zero)do|group_pubkey, (sub_message, i)|
+        sub_message == message ? group_pubkey + public_keys[i] : group_pubkey
+      end
+      paired << (sig_g2_flag ? BLS.pairing(group_pubkey, message, with_final_exp: false) :
+                   BLS.pairing(message, group_pubkey, with_final_exp: false))
+    end
+    paired << (sig_g2_flag ? BLS.pairing(PointG1::BASE.negate, signature, with_final_exp: false) :
+                 BLS.pairing(signature, PointG2::BASE.negate, with_final_exp: false))
     product = paired.inject(Fp12::ONE) { |a, b| a * b }
     product.final_exponentiate == Fp12::ONE
   end

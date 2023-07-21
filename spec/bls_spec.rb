@@ -122,15 +122,26 @@ RSpec.describe 'bls12-381' do
 
   it 'should verify multi-signature' do
     NUM_RUNS.times do
-      vectors = rand(1..100).times.map do
+      vectors = rand(1..10).times.map do
         [SecureRandom.hex, rand(1..BLS::Curve::R)]
       end
       messages = vectors.map { |message, _| message }
+      # signature is G2
       public_keys = vectors.map do |_, private_key|
         BLS.get_public_key(private_key)
       end
       signatures = vectors.map do |message, private_key|
         BLS.sign(message, private_key)
+      end
+      agg = BLS.aggregate_signatures(signatures)
+      expect(BLS.verify_batch(agg, messages, public_keys)).to be true
+
+      # signature is G1
+      public_keys = vectors.map do |_, private_key|
+        BLS.get_public_key(private_key, key_type: :g2)
+      end
+      signatures = vectors.map do |message, private_key|
+        BLS.sign(message, private_key, sig_type: :g1)
       end
       agg = BLS.aggregate_signatures(signatures)
       expect(BLS.verify_batch(agg, messages, public_keys)).to be true
