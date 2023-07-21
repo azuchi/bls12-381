@@ -23,19 +23,37 @@ module BLS
   module_function
 
   # Generate BLS signature: s = pk x H(m)
-  # @param [String] message Message digest(hash value with hex format) to be signed.
+  # @param [String] message Message digest(hex format) to be signed.
   # @param [Integer|String] private_key The private key used for signing. Integer or String(hex).
+  # @param [Symbol] sig_type Signature type, :g1 or :g2.
+  # If :g1 is specified, the signature is a point on G1 and the public key is a point on G2.
+  # If :g2 is specified, the signature is a point on G2 and the public key is a point on G1.
   # @return [PointG2] The signature point.
-  def sign(message, private_key)
-    msg_point = BLS.norm_p2h(message)
+  def sign(message, private_key, sig_type: :g2)
+    msg_point = case sig_type
+                when :g1
+                  BLS.norm_p1h(message)
+                when :g2
+                  BLS.norm_p2h(message)
+                else
+                  raise Error, 'sig_type must be :g1 or :g2.'
+                end
     msg_point * BLS.normalize_priv_key(private_key)
   end
 
   # Generate public key from +private_key+.
   # @param [Integer|String] private_key The private key. Integer or String(hex).
-  # @return [BLS::PointG1] public key.
-  def get_public_key(private_key)
-    PointG1.from_private_key(private_key)
+  # @param [Symbol] key_type Public key type, :g1 or :g2.
+  # @return [BLS::PointG1|BLS::PointG2] public key.
+  def get_public_key(private_key, key_type: :g1)
+    case key_type
+    when :g1
+      PointG1.from_private_key(private_key)
+    when :g2
+      PointG2.from_private_key(private_key)
+    else
+      raise Error, 'key_type must be :g1 or :g2.'
+    end
   end
 
   # Verify BLS signature. Verify one of the following:

@@ -119,18 +119,9 @@ module BLS
 
     # Convert to signature with hex format.
     # @return [String] signature with hex format.
+    # @deprecated Use {#to_hex} instead.
     def to_signature
-      if self == PointG2::ZERO
-        sum = POW_2_383 + POW_2_382
-        return BLS.num_to_hex(sum, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(0, PUBLIC_KEY_LENGTH)
-      end
-      validate!
-      x, y = to_affine.map(&:values)
-      tmp = y[1] > 0 ? y[1] * 2 : y[0] * 2
-      aflag1 = tmp / Curve::P
-      z1 = x[1] + aflag1 * POW_2_381 + POW_2_383
-      z2 = x[0]
-      BLS.num_to_hex(z1, PUBLIC_KEY_LENGTH) + BLS.num_to_hex(z2, PUBLIC_KEY_LENGTH)
+      to_hex(compressed: true)
     end
 
     def validate!

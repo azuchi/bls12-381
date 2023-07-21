@@ -76,16 +76,30 @@ RSpec.describe 'bls12-381' do
     vectors.split("\n").map { |v| v.split(':') }
   end
 
-  it 'should produce correct signatures vectors' do
-    g2_vectors.each do |v|
-      priv, msg, expected = v
-      sig = BLS.sign(msg, priv)
-      expect(sig.to_signature).to eq(expected)
-      # Verify
-      public_key = BLS.get_public_key(priv)
-      expect(BLS.verify(sig, msg, public_key)).to be true
+  describe '#sign' do
+    context "G1 public key and G2 Signature" do
+      it 'should produce correct signatures vectors' do
+        g2_vectors.each do |v|
+          priv, msg, expected = v
+          sig = BLS.sign(msg, priv)
+          expect(sig.to_signature).to eq(expected)
+          # Verify
+          public_key = BLS.get_public_key(priv)
+          expect(BLS.verify(sig, msg, public_key)).to be true
+        end
+      end
+    end
+
+    context "G2 public key and G1 signature" do
+      it 'should produce correct signatures vectors' do
+        priv = '6f3977f6051e184b2c412daa1b5c0115ef7ab347cac8d808ffa2c26bd0658243'
+        msg = '50484522ad8aede64ec7f86b9273b7ed3940481acf93cdd40a2b77f2be2734a14012b2492b6363b12adaeaf055c573e4611b085d2e0fe2153d72453a95eaebf350ac3ba6a26ba0bc79f4c0bf5664dfdf5865f69f7fc6b58ba7d068e8'
+        sig = BLS.sign(msg, priv, sig_type: :g1)
+        expect(sig.to_hex(compressed: true )).to eq('8f7ad830632657f7b3eae17fd4c3d9ff5c13365eea8d33fd0a1a6d8fbebc5152e066bb0ad61ab64e8a8541c8e3f96de9')
+      end
     end
   end
+
 
   it 'should not verify signature with wrong message' do
     NUM_RUNS.times do |i|
