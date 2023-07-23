@@ -28,7 +28,7 @@ Or install it yourself as:
 require 'bls'
 
 # Generate private key.
-private_key = SecureRandom.random_number(BLS::Curve::R)
+private_key = SecureRandom.random_number(BLS::Curve::R - 1)
 
 # Or you can use hex string.
 private_key = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c'
