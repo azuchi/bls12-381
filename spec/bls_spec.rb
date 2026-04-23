@@ -97,6 +97,22 @@ RSpec.describe 'bls12-381' do
         sig = BLS.sign(msg, priv, sig_type: :g1)
         expect(sig.to_hex(compressed: true )).to eq('8f7ad830632657f7b3eae17fd4c3d9ff5c13365eea8d33fd0a1a6d8fbebc5152e066bb0ad61ab64e8a8541c8e3f96de9')
       end
+
+      it 'should verify a G1 signature with a G2 public key' do
+        priv = '6f3977f6051e184b2c412daa1b5c0115ef7ab347cac8d808ffa2c26bd0658243'
+        msg = '50484522ad8aede64ec7f86b9273b7ed3940481acf93cdd40a2b77f2be2734a14012b2492b6363b12adaeaf055c573e4611b085d2e0fe2153d72453a95eaebf350ac3ba6a26ba0bc79f4c0bf5664dfdf5865f69f7fc6b58ba7d068e8'
+        sig = BLS.sign(msg, priv, sig_type: :g1)
+        pub = BLS.get_public_key(priv, key_type: :g2)
+        expect(BLS.verify(sig, msg, pub)).to be true
+      end
+
+      it 'should not verify a G1 signature against the wrong message' do
+        priv = '6f3977f6051e184b2c412daa1b5c0115ef7ab347cac8d808ffa2c26bd0658243'
+        msg = '50484522ad8aede64ec7f86b9273b7ed3940481acf93cdd40a2b77f2be2734a14012b2492b6363b12adaeaf055c573e4611b085d2e0fe2153d72453a95eaebf350ac3ba6a26ba0bc79f4c0bf5664dfdf5865f69f7fc6b58ba7d068e8'
+        sig = BLS.sign(msg, priv, sig_type: :g1)
+        pub = BLS.get_public_key(priv, key_type: :g2)
+        expect(BLS.verify(sig, '64726e3da8', pub)).to be false
+      end
     end
   end
 
