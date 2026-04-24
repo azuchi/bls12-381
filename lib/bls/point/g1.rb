@@ -78,7 +78,7 @@ module BLS
     def self.hash_to_curve(message)
       raise PointError, 'expected hex string' unless message[/^[a-fA-F0-9]*$/]
 
-      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SWU_RO_, PointG1::DST_BASIC)
+      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, PointG1::DST_BASIC)
       p = h2c.digest([message].pack('H*'))
 
       PointG1.new(Fp.new(p.x), Fp.new(p.y), Fp::ONE)
