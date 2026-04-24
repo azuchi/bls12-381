@@ -2,11 +2,6 @@
 
 RSpec.describe 'bls12-381' do
 
-  before do
-    BLS::PointG1::BASE.clear_multiply_precomputes
-    BLS::PointG1::BASE.calc_multiply_precomputes(8)
-  end
-
   it 'should construct point G1 from its uncompressed form (Hex)' do
     # Test Zero
     g1 = BLS::PointG1.from_hex('400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000')

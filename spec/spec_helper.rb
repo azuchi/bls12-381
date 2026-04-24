@@ -16,6 +16,10 @@ RSpec.configure do |config|
   config.expect_with :rspec do |c|
     c.syntax = :expect
   end
+
+  config.before(:suite) do
+    BLS::PointG1::BASE.calc_multiply_precomputes(8)
+  end
 end
 
 def create_fp2_items(amount)
