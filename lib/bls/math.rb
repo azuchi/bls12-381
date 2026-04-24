@@ -5,8 +5,7 @@ module BLS
   module_function
 
   def mod(a, b)
-    res = a % b
-    res >= 0 ? res : b + res
+    a % b
   end
 
   def pow_mod(a, power, m)
