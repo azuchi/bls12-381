@@ -13,7 +13,15 @@ module BLS
       self.class.new(-value)
     end
 
+    # Multiplicative inverse.
+    # Zero has none, and the extended Euclid below returns 0 for it rather than failing, which
+    # is a wrong answer that propagates: ProjectivePoint#to_affine inverts z, so the point at
+    # infinity would come back as the affine coordinates (0, 0) instead of being refused.
+    # @return [BLS::Field] the inverse.
+    # @raise [BLS::Error] Occur when this element is zero.
     def invert
+      raise BLS::Error, 'Zero has no multiplicative inverse.' if zero?
+
       x0 = 1
       x1 = 0
       y0 = 0
