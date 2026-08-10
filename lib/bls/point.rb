@@ -28,6 +28,20 @@ module BLS
       @m_precomputes = nil
     end
 
+    # Domain separation tag this point class uses for +scheme+.
+    # @param [Symbol] scheme :basic, :pop, or :pop_proof(the tag proofs of possession
+    # are signed under, kept separate from :pop so a proof cannot pass as a signature).
+    # @return [String] domain separation tag.
+    # @raise [BLS::Error] Occur when the scheme is unknown.
+    def self.dst(scheme)
+      case scheme
+      when :basic then const_get(:DST_BASIC)
+      when :pop then const_get(:DST_POP)
+      when :pop_proof then const_get(:DST_POP_PROOF)
+      else raise BLS::Error, "Unknown scheme: #{scheme.inspect}. Must be :basic or :pop."
+      end
+    end
+
     def zero?
       z.zero?
     end
@@ -258,12 +272,12 @@ module BLS
     point.is_a?(PointG2) ? point : PointG2.from_hex(point)
   end
 
-  def norm_p1h(point)
-    point.is_a?(PointG1) ? point : PointG1.hash_to_curve(point)
+  def norm_p1h(point, scheme: :basic)
+    point.is_a?(PointG1) ? point : PointG1.hash_to_curve(point, scheme: scheme)
   end
 
-  def norm_p2h(point)
-    point.is_a?(PointG2) ? point : PointG2.hash_to_curve(point)
+  def norm_p2h(point, scheme: :basic)
+    point.is_a?(PointG2) ? point : PointG2.hash_to_curve(point, scheme: scheme)
   end
 
 end
