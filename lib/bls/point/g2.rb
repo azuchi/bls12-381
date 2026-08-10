@@ -22,6 +22,10 @@ module BLS
     # @raise [BLS::PointError]
     def self.from_hex(hex)
       bytes = [hex].pack('H*')
+      unless [KEY_SIZE_COMPRESSED, KEY_SIZE_UNCOMPRESSED].include?(bytes.bytesize)
+        raise PointError, 'Invalid point G2, expected 96/192 bytes.'
+      end
+
       m_byte = bytes[0].unpack1('C')& 0xe0
       if [0x20, 0x60, 0xe0].include?(m_byte)
         raise PointError, "Invalid encoding flag: #{m_byte.to_s(16)}"
@@ -59,7 +63,7 @@ module BLS
                 y0 = bytes[(3 * PUBLIC_KEY_LENGTH)..-1].unpack1('H*').to_i(16)
                 PointG2.new(Fp2.new([x0, x1]), Fp2.new([y0, y1]), Fp2::ONE)
               else
-                raise PointError, 'Invalid point G2, expected 96/192 bytes.'
+                raise PointError, 'Invalid point G2, compression flag does not match the encoded length.'
               end
       point.validate!
       point.validate_group!

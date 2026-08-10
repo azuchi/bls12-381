@@ -211,6 +211,48 @@ RSpec.describe 'bls12-381' do
     end
   end
 
+  describe 'the point at infinity' do
+    let(:private_key) { SecureRandom.hex(32) }
+    let(:message) { SecureRandom.hex(32) }
+
+    # These are reachable from the wire, so they have to come back as a failed verification
+    # rather than as an exception escaping into the caller.
+    it 'fails verification instead of raising' do
+      [[:g1, :g2], [:g2, :g1]].each do |key_type, sig_type|
+        pubkey = BLS.get_public_key(private_key, key_type: key_type)
+        signature = BLS.sign(message, private_key, sig_type: sig_type)
+        zero_key = key_type == :g1 ? BLS::PointG1::ZERO : BLS::PointG2::ZERO
+        zero_sig = sig_type == :g1 ? BLS::PointG1::ZERO : BLS::PointG2::ZERO
+
+        expect(BLS.verify(signature, message, zero_key)).to be false
+        expect(BLS.verify(zero_sig, message, pubkey)).to be false
+        expect(BLS.verify(zero_sig, message, zero_key)).to be false
+      end
+    end
+
+    # KeyValidate exists for this: pairing the identity away leaves 1 == 1 on both sides.
+    it 'never lets the identity key and signature pass for any message' do
+      10.times do
+        expect(BLS.verify(BLS::PointG2::ZERO, SecureRandom.hex(32), BLS::PointG1::ZERO)).to be false
+      end
+    end
+
+    it 'fails aggregate verification instead of raising' do
+      pubkey = BLS.get_public_key(private_key)
+      signature = BLS.sign(message, private_key)
+      expect(BLS.verify_batch(signature, [message], [BLS::PointG1::ZERO])).to be false
+      expect(BLS.verify_batch(BLS::PointG2::ZERO, [message], [pubkey])).to be false
+      expect(BLS.pop_verify(BLS::PointG1::ZERO, signature)).to be false
+      # Keys chosen to cancel each other leave the identity as the aggregate.
+      expect(BLS.fast_aggregate_verify(signature, message, [pubkey, pubkey.negate])).to be false
+    end
+
+    it 'still raises from the bare pairing' do
+      expect { BLS.pairing(BLS::PointG1::ZERO, BLS::PointG2::BASE) }.to raise_error(BLS::PairingError)
+      expect(BLS.partial_pairing(BLS::PointG1::ZERO, BLS::PointG2::BASE)).to eq(BLS::Fp12::ONE)
+    end
+  end
+
   describe '#verify_batch' do
     let(:private_keys) { 3.times.map { SecureRandom.hex(32) } }
     let(:public_keys) { private_keys.map { |k| BLS.get_public_key(k) } }

@@ -71,18 +71,23 @@ module BLS
       signature.is_a?(PointG2) && public_key.is_a?(PointG1)
       raise BLS::Error, 'Invalid signature or public key. If the public key is PointG1, the signature must be an element of Point::G2 or vice versa.'
     end
+    # KeyValidate of draft-irtf-cfrg-bls-signature section 2.5. The identity is not a public
+    # key anybody holds, and pairing it away would leave the identity signature verifying
+    # against every message.
+    return false if public_key.zero?
+
     g = public_key.is_a?(PointG1) ? PointG1::BASE : PointG2::BASE
     ephm = if public_key.is_a?(PointG1)
              hm = BLS.norm_p2h(message, scheme: scheme)
-             BLS.pairing(public_key.negate, hm, with_final_exp: false)
+             BLS.partial_pairing(public_key.negate, hm)
            else
              hm = BLS.norm_p1h(message, scheme: scheme)
-             BLS.pairing(hm, public_key.negate, with_final_exp: false)
+             BLS.partial_pairing(hm, public_key.negate)
            end
     egs = if public_key.is_a?(PointG1)
-            BLS.pairing(g, signature, with_final_exp: false)
+            BLS.partial_pairing(g, signature)
           else
-            BLS.pairing(signature, g, with_final_exp: false)
+            BLS.partial_pairing(signature, g)
           end
     exp = (egs * ephm).final_exponentiate
     exp == Fp12::ONE
@@ -150,6 +155,7 @@ module BLS
         raise BLS::Error, "Public key must be #{sig_g2_flag ? 'PointG1' : 'PointG2'}"
       end
     end
+    return false if public_keys.any?(&:zero?) # KeyValidate, as in #verify
 
     n_message = messages.map { |m| sig_g2_flag ? BLS.norm_p2h(m, scheme: scheme) : BLS.norm_p1h(m, scheme: scheme)}
 
@@ -165,11 +171,11 @@ module BLS
     return false if scheme == :basic && grouped.size < n_message.size
 
     paired = grouped.each_value.map do |message, group_pubkey|
-      sig_g2_flag ? BLS.pairing(group_pubkey, message, with_final_exp: false) :
-        BLS.pairing(message, group_pubkey, with_final_exp: false)
+      sig_g2_flag ? BLS.partial_pairing(group_pubkey, message) :
+        BLS.partial_pairing(message, group_pubkey)
     end
-    paired << (sig_g2_flag ? BLS.pairing(PointG1::BASE.negate, signature, with_final_exp: false) :
-                 BLS.pairing(signature, PointG2::BASE.negate, with_final_exp: false))
+    paired << (sig_g2_flag ? BLS.partial_pairing(PointG1::BASE.negate, signature) :
+                 BLS.partial_pairing(signature, PointG2::BASE.negate))
     product = paired.inject(Fp12::ONE) { |a, b| a * b }
     product.final_exponentiate == Fp12::ONE
   end
