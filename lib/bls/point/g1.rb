@@ -98,12 +98,14 @@ module BLS
     # Convert hash to PointG1
     # @param [String] message a hash with hex format.
     # @param [Symbol] scheme signature scheme whose domain separation tag is used, :basic or :pop.
+    # @param [String] dst a domain separation tag to use instead of the scheme's, for a
+    # ciphersuite this library does not name, such as the ones the RFC 9380 vectors use.
     # @return [BLS::PointG1] point.
     # @raise [BLS::PointError]
-    def self.hash_to_curve(message, scheme: :basic)
+    def self.hash_to_curve(message, scheme: :basic, dst: nil)
       validate_hex!(message)
 
-      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, dst(scheme))
+      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, dst || self.dst(scheme))
       p = h2c.digest([message].pack('H*'))
 
       PointG1.new(Fp.new(p.x), Fp.new(p.y), Fp::ONE)

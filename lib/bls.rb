@@ -146,8 +146,8 @@ module BLS
   # @param [Symbol] scheme Signature scheme the signatures were made under, :basic or :pop.
   # @return [Boolean] verification result.
   def verify_batch(signature, messages, public_keys, scheme: :basic)
-    raise BLS::Error, 'Expected non-empty array.' if messages.empty?
     raise BLS::Error, 'Public keys count should equal msg count.' unless messages.size == public_keys.size
+    return false if messages.empty? # nothing was signed, so nothing is verified
 
     sig_g2_flag = signature.is_a?(PointG2)
     public_keys.each do |public_key|
@@ -213,6 +213,12 @@ module BLS
   # @param [Array[BLS::PointG1]|Array[BLS::PointG2]] public_keys the list of public keys.
   # @return [Boolean] verification result.
   def fast_aggregate_verify(signature, message, public_keys)
+    return false if public_keys.empty? # nothing signed, so nothing is verified
+    # KeyValidate every key, not just the aggregate. The identity adds nothing to the sum, so
+    # a set containing it would otherwise verify on the strength of the others while counting
+    # a key that nobody holds, and could hold, as one of the signers.
+    return false if public_keys.any?(&:zero?)
+
     verify(signature, message, aggregate_public_keys(public_keys), scheme: :pop)
   end
 end
