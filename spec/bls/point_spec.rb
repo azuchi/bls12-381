@@ -409,6 +409,39 @@ RSpec.describe 'bls12-381 Point' do
     end
   end
 
+  describe 'batch inversion' do
+    # gen_invert_batch used to skip zero entries and leave them in place, so a batch holding
+    # the point at infinity came back with (0, 0) for it. normalize_z then turned that into a
+    # point off the curve, and calc_multiply_precomputes built a whole table of them without
+    # anything being raised, leaving multiply to return nonsense that did not even report
+    # itself as the identity.
+    it 'refuses the point at infinity' do
+      [[BLS::PointG1::BASE, BLS::PointG1::ZERO], [BLS::PointG2::BASE, BLS::PointG2::ZERO]].each do |base, zero|
+        expect { base.to_affine_batch([base, zero]) }.to raise_error(BLS::PointError, /infinity/)
+        expect { zero.calc_multiply_precomputes(4) }.to raise_error(BLS::PointError, /infinity/)
+      end
+      expect { BLS::PointG1::BASE.gen_invert_batch([BLS::Fp::ONE, BLS::Fp::ZERO]) }
+        .to raise_error(BLS::Error, 'Zero has no multiplicative inverse.')
+    end
+
+    it 'inverts a batch the same way one at a time would' do
+      values = (1..8).map { |i| BLS::Fp.new(i * 12345) }
+      inverted = BLS::PointG1::BASE.gen_invert_batch(values.dup)
+      values.each_with_index { |value, i| expect(value * inverted[i]).to eq(BLS::Fp::ONE) }
+
+      points = (1..5).map { |i| BLS::PointG1::BASE * i }
+      expect(BLS::PointG1::BASE.to_affine_batch(points)).to eq(points.map(&:to_affine))
+    end
+
+    it 'still builds usable precomputes' do
+      point = BLS::PointG1.new(BLS::Fp.new(BLS::Curve::G_X), BLS::Fp.new(BLS::Curve::G_Y), BLS::Fp::ONE)
+      point.calc_multiply_precomputes(8)
+      expect(point.m_precomputes[1]).to all(satisfy { |p| p.in_group? })
+      expect(point * 12345).to eq(BLS::PointG1::BASE * 12345)
+      expect(point * (BLS::Curve::R - 7)).to eq(BLS::PointG1::BASE * (BLS::Curve::R - 7))
+    end
+  end
+
   describe 'prime-order subgroup validation' do
     it 'accepts points that belong to the subgroup' do
       [BLS::PointG1::BASE, BLS::PointG1::ZERO, BLS::PointG2::BASE, BLS::PointG2::ZERO].each do |p|

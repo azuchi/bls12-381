@@ -173,7 +173,11 @@ module BLS
       [x * inv_z, y * inv_z]
     end
 
+    # @raise [PointError] Occur when any of +points+ is the point at infinity, which has no
+    # affine representation.
     def to_affine_batch(points)
+      raise PointError, 'The point at infinity has no affine representation.' if points.any?(&:zero?)
+
       to_inv = gen_invert_batch(points.map(&:z))
       points.map.with_index { |p, i| p.to_affine(to_inv[i]) }
     end
@@ -182,21 +186,23 @@ module BLS
       new_point(xy[0], xy[1], x.class.const_get(:ONE))
     end
 
+    # Inverts a whole array for the price of one inversion plus a few multiplications each.
+    # Zero is refused rather than skipped: leaving it in place would hand the caller a zero
+    # where it asked for an inverse, and Field#invert refuses it for the same reason.
+    # @raise [BLS::Error] Occur when any element is zero.
     def gen_invert_batch(nums)
+      raise BLS::Error, 'Zero has no multiplicative inverse.' if nums.any?(&:zero?)
+
       len = nums.length
       scratch = Array.new(len)
       acc = x.class::ONE
       len.times do |i|
-        next if nums[i].zero?
-
         scratch[i] = acc
         acc *= nums[i]
       end
       acc = acc.invert
       len.times do |t|
         i = len - t - 1
-        next if nums[i].zero?
-
         tmp = acc * nums[i]
         nums[i] = acc * scratch[i]
         acc = tmp
