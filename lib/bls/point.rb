@@ -40,15 +40,22 @@ module BLS
       end
     end
 
-    # Check that +message+ is a byte string written in hex, since that is what callers hand
-    # to {hash_to_curve} and it gets unpacked with pack('H*').
-    # An odd number of digits would be padded to a whole byte, making '000' and '0000' the
-    # same message, and \A..\z rather than ^..$ keeps a newline from carrying a non-hex tail
-    # past the check.
-    # @param [String] message a hash with hex format.
-    # @raise [PointError] Occur when the message is not an even length hex string.
-    def self.validate_hex!(message)
-      return if message.is_a?(String) && message.match?(/\A(?:[0-9a-fA-F]{2})*\z/)
+    # Check that +hex+ is a whole number of bytes written in hex, for {from_hex} and
+    # {hash_to_curve}, which both unpack their argument with pack('H*').
+    #
+    # pack maps a character to a nibble by its low bits, so it reads '3', '#', 'J', 'Z', 'j'
+    # and 'z' all as 3 and never complains, and it pads an odd number of digits out to a whole
+    # byte. Left alone, that gives every point and every message a large family of spellings
+    # that all arrive at the same bytes. Applications tend to carry keys around as hex and
+    # compare, deduplicate and index them that way, so the aliases matter as much here as the
+    # non-canonical encodings do a layer down.
+    #
+    # \A..\z rather than ^..$ because those match at line boundaries in Ruby, which would let
+    # a newline carry a non-hex tail past the check.
+    # @param [String] hex a byte string in hex format.
+    # @raise [PointError] Occur when it is not an even length string of hex digits.
+    def self.validate_hex!(hex)
+      return if hex.is_a?(String) && hex.match?(/\A(?:[0-9a-fA-F]{2})*\z/)
 
       raise PointError, 'expected hex string'
     end

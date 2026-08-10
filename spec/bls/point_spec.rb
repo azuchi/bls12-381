@@ -389,6 +389,33 @@ RSpec.describe 'bls12-381 Point' do
       ['', '00', 'ff' * 10, 'ab' * 47].each { |hex| expect_rejected(hex) }
     end
 
+    # pack('H*') reads a character as its low bits, so '3', '#', 'J', 'Z', 'j' and 'z' all
+    # arrive as the nibble 3 without complaint, and an odd count is padded out to a byte.
+    # Every point had a large family of spellings, which matters because applications carry
+    # keys around as hex and compare and deduplicate them that way.
+    it 'rejects spellings of a point that are not hex' do
+      [[BLS::PointG1, base], [BLS::PointG2, BLS::PointG2::BASE]].each do |klass, point|
+        [point.to_hex(compressed: true), point.to_hex].each do |canonical|
+          expect(klass.from_hex(canonical)).to eq(point)
+          expect(klass.from_hex(canonical.upcase)).to eq(point)
+          %w[3 z # J Z j].each_cons(2) do |digit, letter|
+            aliased = canonical.tr(digit, letter)
+            next if aliased == canonical
+
+            expect { klass.from_hex(aliased) }.to raise_error(BLS::PointError, 'expected hex string')
+          end
+        end
+      end
+      expect_rejected(nil)
+      expect_rejected(12_345)
+    end
+
+    it 'rejects an odd number of digits that would be padded into a valid point' do
+      point = (1..200).map { |i| base * i }.find { |p| p.to_hex(compressed: true).end_with?('0') }
+      expect(point).not_to be_nil
+      expect_rejected(point.to_hex(compressed: true)[0..-2])
+    end
+
     it 'rejects any other length for G2 too' do
       ['', '00', 'ff' * 10, 'ab' * 95].each do |hex|
         expect { BLS::PointG2.from_hex(hex) }.to raise_error(BLS::PointError)

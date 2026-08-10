@@ -18,6 +18,7 @@ module BLS
     # @return [PointG1]
     # @raise [BLS::PointError] Occurs when hex length does not match, or point is not on G1.
     def self.from_hex(hex)
+      validate_hex!(hex)
       bytes = [hex].pack('H*')
       unless [KEY_SIZE_COMPRESSED, KEY_SIZE_UNCOMPRESSED].include?(bytes.bytesize)
         raise PointError, 'Invalid point G1, expected 48 or 96 bytes.'

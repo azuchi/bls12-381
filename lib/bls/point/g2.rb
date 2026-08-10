@@ -21,6 +21,7 @@ module BLS
     # @return [BLS::PointG2] PointG2.
     # @raise [BLS::PointError]
     def self.from_hex(hex)
+      validate_hex!(hex)
       bytes = [hex].pack('H*')
       unless [KEY_SIZE_COMPRESSED, KEY_SIZE_UNCOMPRESSED].include?(bytes.bytesize)
         raise PointError, 'Invalid point G2, expected 96/192 bytes.'
