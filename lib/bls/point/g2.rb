@@ -59,6 +59,7 @@ module BLS
                 raise PointError, 'Invalid point G2, expected 96/192 bytes.'
               end
       point.validate!
+      point.validate_group!
       point
     end
 

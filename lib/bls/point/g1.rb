@@ -13,7 +13,7 @@ module BLS
     # Parse PointG1 from form hex.
     # @param [String] hex hex value of PointG1.
     # @return [PointG1]
-    # @raise [BLS::PointError] Occurs when hex length does not match, or point does not on G1.
+    # @raise [BLS::PointError] Occurs when hex length does not match, or point is not on G1.
     def self.from_hex(hex)
       bytes = [hex].pack('H*')
       point = case bytes.bytesize
@@ -40,6 +40,7 @@ module BLS
                 raise PointError, 'Invalid point G1, expected 48 or 96 bytes.'
               end
       point.validate!
+      point.validate_group!
       point
     end
 

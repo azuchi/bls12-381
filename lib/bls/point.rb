@@ -123,6 +123,21 @@ module BLS
       p
     end
 
+    # Check whether this point belongs to the prime-order subgroup (G1 or G2).
+    # Being on the curve is not sufficient: E(Fp) and E'(Fp2) both contain points
+    # outside the order-r subgroup, and accepting them makes keys and signatures malleable.
+    # Since r**2 does not divide the group order, [r]P == O holds only for P in the subgroup.
+    # @return [Boolean] true if this point is in the prime-order subgroup.
+    def in_group?
+      zero? || multiply_unsafe(Curve::R).zero?
+    end
+
+    # Validate that this point belongs to the prime-order subgroup.
+    # @raise [PointError] Occur when this point is not in the prime-order subgroup.
+    def validate_group!
+      raise PointError, 'Invalid point: not in prime-order subgroup' unless in_group?
+    end
+
     def to_affine(inv_z = z.invert)
       [x * inv_z, y * inv_z]
     end

@@ -311,6 +311,58 @@ RSpec.describe 'bls12-381 Point' do
     end
   end
 
+  describe 'prime-order subgroup validation' do
+    it 'accepts points that belong to the subgroup' do
+      [BLS::PointG1::BASE, BLS::PointG1::ZERO, BLS::PointG2::BASE, BLS::PointG2::ZERO].each do |p|
+        expect(p.in_group?).to be true
+        expect { p.validate_group! }.not_to raise_error
+      end
+      expect(BLS::PointG1.from_private_key(SecureRandom.hex(32)).in_group?).to be true
+      expect(BLS::PointG2.from_private_key(SecureRandom.hex(32)).in_group?).to be true
+      expect(BLS::PointG1.hash_to_curve('00' * 32).in_group?).to be true
+      expect(BLS::PointG2.hash_to_curve('00' * 32).in_group?).to be true
+    end
+
+    it 'rejects a G1 point that is on the curve but outside the subgroup' do
+      # A public key with a small-order point added to it: still on the curve, but no
+      # longer in G1. Without this check it verifies against the untouched signature.
+      order3 = small_order_point_g1
+      rogue = BLS::PointG1::BASE * 12345 + order3
+      expect { rogue.validate! }.not_to raise_error
+      expect(rogue.in_group?).to be false
+      expect { rogue.validate_group! }.to raise_error(BLS::PointError, /prime-order subgroup/)
+      [rogue.to_hex(compressed: true), rogue.to_hex].each do |hex|
+        expect { BLS::PointG1.from_hex(hex) }.to raise_error(BLS::PointError, /prime-order subgroup/)
+      end
+    end
+
+    it 'rejects a G2 point that is on the curve but outside the subgroup' do
+      # The SSWU output before cofactor clearing lies on E'(Fp2) but not in G2.
+      u = BLS::H2C::G2.hash_to_field('00' * 32)
+      p = BLS::PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[0])))
+      expect { p.validate! }.not_to raise_error
+      expect(p.in_group?).to be false
+      [p.to_hex(compressed: true), p.to_hex].each do |hex|
+        expect { BLS::PointG2.from_hex(hex) }.to raise_error(BLS::PointError, /prime-order subgroup/)
+      end
+    end
+
+    # A point of order 3 on E(Fp). #E(Fp) = r * h and 3 divides h.
+    def small_order_point_g1
+      x = 1
+      loop do
+        rhs = BLS.mod(x**3 + BLS::Curve::B, BLS::Curve::P)
+        y = BLS.pow_mod(rhs, (BLS::Curve::P + 1) / 4, BLS::Curve::P)
+        if BLS.pow_mod(y, 2, BLS::Curve::P) == rhs
+          p = BLS::PointG1.new(BLS::Fp.new(x), BLS::Fp.new(y), BLS::Fp::ONE)
+          candidate = p.multiply_unsafe(BLS::Curve::R * BLS::Curve::H / 3)
+          return candidate unless candidate.zero?
+        end
+        x += 1
+      end
+    end
+  end
+
   describe 'compress/decompress' do
     it do
       10.times do
