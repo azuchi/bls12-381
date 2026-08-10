@@ -129,6 +129,12 @@ module BLS
   end
 
   # Verify aggregated signature.
+  #
+  # Under the :basic scheme the messages must all be distinct: repeating one is reported as
+  # an invalid signature, since that scheme has nothing but message distinctness to stop a
+  # rogue key from signing on another key's behalf. Use :pop, whose proofs of possession rule
+  # that out, to verify several signatures over the same message.
+  #
   # @param [BLS::PointG2|BLS::PointG1] signature aggregated signature(BLS::PointG2 or BLS::PointG1).
   # @param [Array[String]] messages the list of message.
   # @param [Array[BLS::PointG1]|Array[BLS::PointG2]] public_keys the list of public keys(BLS::PointG1 or BLS::PointG2).
@@ -146,14 +152,21 @@ module BLS
     end
 
     n_message = messages.map { |m| sig_g2_flag ? BLS.norm_p2h(m, scheme: scheme) : BLS.norm_p1h(m, scheme: scheme)}
-    paired = []
+
+    # Keys that signed the same message are summed so that message is paired exactly once:
+    # e(P1, Q) * e(P2, Q) == e(P1 + P2, Q). Grouping on the serialized point rather than on
+    # the message keeps this independent of how equal messages happened to be spelled.
     zero = sig_g2_flag ? PointG1::ZERO : PointG2::ZERO
-    n_message.each do |message|
-      group_pubkey = n_message.each_with_index.inject(zero)do|group_pubkey, (sub_message, i)|
-        sub_message == message ? group_pubkey + public_keys[i] : group_pubkey
-      end
-      paired << (sig_g2_flag ? BLS.pairing(group_pubkey, message, with_final_exp: false) :
-                   BLS.pairing(message, group_pubkey, with_final_exp: false))
+    grouped = {}
+    n_message.each_with_index do |message, i|
+      group = (grouped[message.to_hex(compressed: true)] ||= [message, zero])
+      group[1] += public_keys[i]
+    end
+    return false if scheme == :basic && grouped.size < n_message.size
+
+    paired = grouped.each_value.map do |message, group_pubkey|
+      sig_g2_flag ? BLS.pairing(group_pubkey, message, with_final_exp: false) :
+        BLS.pairing(message, group_pubkey, with_final_exp: false)
     end
     paired << (sig_g2_flag ? BLS.pairing(PointG1::BASE.negate, signature, with_final_exp: false) :
                  BLS.pairing(signature, PointG2::BASE.negate, with_final_exp: false))

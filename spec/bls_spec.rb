@@ -211,6 +211,71 @@ RSpec.describe 'bls12-381' do
     end
   end
 
+  describe '#verify_batch' do
+    let(:private_keys) { 3.times.map { SecureRandom.hex(32) } }
+    let(:public_keys) { private_keys.map { |k| BLS.get_public_key(k) } }
+    let(:message) { SecureRandom.hex(32) }
+    let(:other_message) { SecureRandom.hex(32) }
+
+    def aggregate(pairs, scheme)
+      BLS.aggregate_signatures(pairs.map { |key, msg| BLS.sign(msg, key, scheme: scheme) })
+    end
+
+    context 'with the basic scheme' do
+      it 'verifies distinct messages' do
+        pairs = private_keys.zip([message, other_message, SecureRandom.hex(32)])
+        signature = aggregate(pairs, :basic)
+        expect(BLS.verify_batch(signature, pairs.map(&:last), public_keys)).to be true
+      end
+
+      it 'reports repeated messages as invalid' do
+        # Message distinctness is the only thing keeping a rogue key out of a basic scheme
+        # aggregate, so a repeat is invalid however well formed the signature is.
+        pairs = [[private_keys[0], message], [private_keys[1], message]]
+        signature = aggregate(pairs, :basic)
+        expect(BLS.verify_batch(signature, [message, message], public_keys[0, 2])).to be false
+        pairs = private_keys.zip([message, message, other_message])
+        expect(BLS.verify_batch(aggregate(pairs, :basic), pairs.map(&:last), public_keys)).to be false
+      end
+    end
+
+    context 'with the pop scheme' do
+      it 'verifies repeated messages' do
+        pairs = [[private_keys[0], message], [private_keys[1], message]]
+        signature = aggregate(pairs, :pop)
+        expect(BLS.verify_batch(signature, [message, message], public_keys[0, 2])).to be false
+        expect(BLS.verify_batch(signature, [message, message], public_keys[0, 2], scheme: :pop)).to be true
+      end
+
+      it 'verifies a mix of repeated and distinct messages' do
+        messages = [message, message, other_message]
+        signature = aggregate(private_keys.zip(messages), :pop)
+        expect(BLS.verify_batch(signature, messages, public_keys, scheme: :pop)).to be true
+        # The same signer twice instead of two distinct ones must not pass.
+        wrong = aggregate([private_keys[0], private_keys[1], private_keys[1]].zip(messages), :pop)
+        expect(BLS.verify_batch(wrong, messages, public_keys, scheme: :pop)).to be false
+      end
+
+      it 'agrees with fast_aggregate_verify when every message is the same' do
+        messages = [message] * 3
+        signature = aggregate(private_keys.zip(messages), :pop)
+        expect(BLS.verify_batch(signature, messages, public_keys, scheme: :pop)).to be true
+        expect(BLS.fast_aggregate_verify(signature, message, public_keys)).to be true
+      end
+    end
+
+    context 'with a G1 signature and G2 public keys' do
+      let(:public_keys) { private_keys.map { |k| BLS.get_public_key(k, key_type: :g2) } }
+
+      it 'handles repeated messages the same way' do
+        pairs = [[private_keys[0], message], [private_keys[1], message]]
+        signature = BLS.aggregate_signatures(
+          pairs.map { |key, msg| BLS.sign(msg, key, sig_type: :g1, scheme: :pop) })
+        expect(BLS.verify_batch(signature, [message, message], public_keys[0, 2], scheme: :pop)).to be true
+      end
+    end
+  end
+
   describe 'proof of possession scheme' do
     let(:sk) { SecureRandom.hex(32) }
     let(:other_sk) { SecureRandom.hex(32) }

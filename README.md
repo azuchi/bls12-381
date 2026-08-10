@@ -84,8 +84,11 @@ under the other. The default is `:basic`, which is what earlier versions of this
 
 | scheme | aggregation |
 | --- | --- |
-| `:basic` (default) | `BLS.verify_batch` only, and **only when every message is distinct** |
-| `:pop` | `BLS.fast_aggregate_verify`, for many signatures over a single message |
+| `:basic` (default) | `BLS.verify_batch`, **only when every message is distinct** |
+| `:pop` | the above with no such restriction, plus `BLS.fast_aggregate_verify` for many signatures over a single message |
+
+`BLS.verify_batch` returns `false` for a `:basic` aggregate that covers the same message
+twice, however well formed the signature is. Pass `scheme: :pop` to verify those.
 
 **Aggregating public keys is unsafe without proofs of possession.** Given a public key
 `pk_victim`, an attacker can register `pk_attacker = g * x - pk_victim` for an `x` they
