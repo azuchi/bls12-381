@@ -37,6 +37,26 @@ RSpec.describe BLS::Field do
     end
   end
 
+  describe '#sqrt' do
+    # Zero is a square, with itself as its only root. It used to come back as nil, meaning
+    # "not a square", because the inverse of zero was zero and the check below fell through;
+    # once Field#invert started refusing zero it raised instead.
+    it 'roots zero as zero' do
+      expect(BLS::Fp2::ZERO.sqrt).to eq(BLS::Fp2::ZERO)
+    end
+
+    it 'still roots squares and refuses the rest' do
+      100.times do
+        square = BLS::Fp2.new([rand(BLS::Fp::ORDER), rand(BLS::Fp::ORDER)]).square
+        expect(square.sqrt.square).to eq(square)
+      end
+      # About half of the field is not a square, so this covers the nil path too.
+      results = 100.times.map { |i| BLS::Fp2.new([i + 7, 3 * i + 1]) }.map { |x| [x, x.sqrt] }
+      expect(results.count { |_, root| root.nil? }).to be > 0
+      results.each { |x, root| expect(root.square).to eq(x) if root }
+    end
+  end
+
   describe '#sgn0' do
     # RFC 9380 section 4.1: s = sign_0 OR (zero_0 AND sign_1).
     def reference(x0, x1)

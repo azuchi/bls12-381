@@ -256,7 +256,15 @@ module BLS
       Fp2.new([a * b, c * c1])
     end
 
+    # Square root, or nil when this element is not a square.
+    # Zero is answered up front. It is a square, its root being itself, and the division below
+    # would otherwise be asked for the inverse of zero. That used to yield zero and land here
+    # as a nil, which reads as "not a square" and is wrong for the one element that has
+    # exactly one root.
+    # @return [BLS::Fp2, nil]
     def sqrt
+      return self if zero?
+
       candidate = pow((Fp2::ORDER + 8) / 16)
       check = candidate.square / self
       r = ROOTS_OF_UNITY
