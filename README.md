@@ -102,6 +102,29 @@ on every public key **before** passing it to `BLS.aggregate_public_keys` or
 `BLS.fast_aggregate_verify` — neither of them can do it for you, since they never see the
 proofs.
 
+## Errors
+
+Everything this library raises about the data it was handed descends from `BLS::Error`, so
+one rescue covers a key that will not parse, a point outside the subgroup, a private key that
+is not hex, and a pairing that is not defined:
+
+```ruby
+begin
+  public_key = BLS::PointG1.from_hex(untrusted)
+rescue BLS::Error => e   # BLS::PointError here, and BLS::PairingError elsewhere
+  ...
+end
+```
+
+Passing the wrong type or the wrong number of coefficients is a mistake in the calling code
+rather than a fact about a key, and raises `ArgumentError` as it would anywhere else in Ruby.
+
+Verification never raises over the data it is given. `BLS.verify`, `BLS.verify_batch`,
+`BLS.fast_aggregate_verify` and `BLS.pop_verify` return `false` for anything they will not
+accept, including the point at infinity and an empty set of signers, so untrusted input cannot
+turn into an exception. Deserializing that input with `from_hex` beforehand still raises, which
+is where a malformed encoding is caught.
+
 ## Side channels
 
 **Nothing here is constant time, and signing is not safe against an attacker who can

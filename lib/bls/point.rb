@@ -13,8 +13,6 @@ module BLS
   autoload :PointG1, "bls/point/g1"
   autoload :PointG2, "bls/point/g2"
 
-  class PointError < StandardError; end
-
   # Abstract Point class that consist of projective coordinates.
   class ProjectivePoint
 

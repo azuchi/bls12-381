@@ -1,8 +1,6 @@
 module BLS
   module_function
 
-  class PairingError < StandardError; end
-
   # @param [BLS::PointG1] p
   # @param [BLS::PointG2] q
   # @param [Boolean] with_final_exp

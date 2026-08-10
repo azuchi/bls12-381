@@ -2,6 +2,7 @@
 
 require 'digest'
 require 'bls/version'
+require 'bls/error' # defines the exception classes the files below raise
 require 'bls/math'
 require 'bls/curve'
 require 'bls/field'
@@ -10,8 +11,6 @@ require 'bls/point'
 require 'bls/pairing'
 
 module BLS
-
-  class Error < StandardError; end
 
   POW_2_381 = 2**381
   POW_2_382 = POW_2_381 * 2
