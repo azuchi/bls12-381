@@ -153,6 +153,13 @@ module BLS
       self.precomputes = nil
     end
 
+    # The line coefficients {BLS.miller_loop} needs, worked out once and kept on the point.
+    #
+    # This memoises without a lock, so concurrent callers can each compute it. They compute
+    # the same coefficients and assign a finished array, so a reader sees one or the other and
+    # never a partial one; the cost is the repeated work. BLS.verify reaches this on
+    # PointG2::BASE, which is shared, whenever the public key is a G2 point.
+    # @return [Array]
     def pairing_precomputes
       return precomputes if precomputes
 

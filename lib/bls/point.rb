@@ -258,6 +258,18 @@ module BLS
       to_affine_batch(points).map{ |p| from_affine_tuple(p) }
     end
 
+    # Build the window table that {multiply} then uses, trading memory for speed on a point
+    # that will be multiplied repeatedly, such as a generator.
+    #
+    # Call this once, before the point is shared between threads. The check below is not a
+    # lock: the table takes long enough to build that MRI will switch threads part way
+    # through, so several callers can pass the check together and each build their own, each
+    # paying the time and the memory. What they build is identical, so whichever assignment
+    # lands last is still correct and no half-built table is ever visible; the cost is the
+    # duplicated work, and a guard that reads as protection while providing none.
+    #
+    # @param [Integer] w window width.
+    # @raise [PointError] Occur when this point already has precomputes.
     def calc_multiply_precomputes(w)
       raise PointError, 'This point already has precomputes.' if m_precomputes
 

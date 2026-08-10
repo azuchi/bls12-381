@@ -125,6 +125,21 @@ accept, including the point at infinity and an empty set of signers, so untruste
 turn into an exception. Deserializing that input with `from_hex` beforehand still raises, which
 is where a malformed encoding is caught.
 
+## Threads
+
+Signing and verifying from several threads gives the right answers, but two caches are
+written without a lock and neither is worth sharing a point over.
+
+`calc_multiply_precomputes` builds its table over long enough that MRI switches threads part
+way through, so callers racing on one point all pass the "already has precomputes" check and
+each build their own. They build the same table, so the result stays correct; what you lose is
+the time and the memory of doing it several times over, and a guard that reads as protection
+while providing none. Build the table once, before the point goes anywhere else.
+
+`BLS.verify` memoises pairing coefficients onto the G2 point it is given, and onto
+`BLS::PointG2::BASE` when the public key is a G2 point. Racing callers recompute rather than
+corrupt, for the same reason: what is assigned is always a finished array.
+
 ## Side channels
 
 **Nothing here is constant time, and signing is not safe against an attacker who can
