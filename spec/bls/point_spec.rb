@@ -311,6 +311,74 @@ RSpec.describe 'bls12-381 Point' do
     end
   end
 
+  describe 'G1 serialization validation' do
+    let(:base) { BLS::PointG1::BASE }
+    let(:affine) { base.to_affine }
+
+    def expect_rejected(hex)
+      expect { BLS::PointG1.from_hex(hex) }.to raise_error(BLS::PointError)
+    end
+
+    # Everything below encodes a point that is on the curve and in G1, so only the framing
+    # is wrong. Accepting these would give one point several encodings, and anything that
+    # keys off the serialized bytes (caches, dedup, consensus rules) would disagree.
+    it 'rejects an infinity encoding whose remaining bytes are not zero' do
+      expect_rejected(BLS.num_to_hex(BLS::POW_2_383 + BLS::POW_2_382 + 0xdeadbeef, 48))
+      bytes = Array.new(2 * BLS::PUBLIC_KEY_LENGTH, 0)
+      bytes[0] = BLS::POINT_INFINITY_FLAG
+      bytes[-1] = 0xff
+      expect_rejected(bytes.pack('C*').unpack1('H*'))
+    end
+
+    it 'rejects a length that disagrees with the compression flag' do
+      sign = (affine[1].value * 2) / BLS::Curve::P
+      expect_rejected(BLS.num_to_hex(affine[0].value + sign * BLS::POW_2_381, 48))
+      bytes = [base.to_hex].pack('H*').bytes
+      bytes[0] |= BLS::POINT_COMPRESSION_FLAG
+      expect_rejected(bytes.pack('C*').unpack1('H*'))
+    end
+
+    it 'rejects a coordinate that is not reduced modulo the field order' do
+      sign = (affine[1].value * 2) / BLS::Curve::P
+      # x + P is congruent to x, so it names the same point through a second encoding.
+      x = 4000.times.map { |i| BLS::PointG1.hash_to_curve(BLS.num_to_hex(i, 4)).to_affine.first.value }
+              .find { |v| v + BLS::Curve::P < BLS::POW_2_381 }
+      expect(x).not_to be_nil
+      expect_rejected(BLS.num_to_hex(x + BLS::Curve::P + sign * BLS::POW_2_381 + BLS::POW_2_383, 48))
+      expect_rejected(BLS.num_to_hex(affine[0].value, 48) +
+                        BLS.num_to_hex(affine[1].value + BLS::Curve::P, 48))
+    end
+
+    it 'rejects a sign bit on an uncompressed encoding' do
+      bytes = [base.to_hex].pack('H*').bytes
+      bytes[0] |= BLS::POINT_Y_FLAG
+      expect_rejected(bytes.pack('C*').unpack1('H*'))
+    end
+
+    it 'rejects any other length' do
+      ['', '00', 'ff' * 10, 'ab' * 47].each { |hex| expect_rejected(hex) }
+    end
+
+    it 'rejects any other length for G2 too' do
+      ['', '00', 'ff' * 10, 'ab' * 95].each do |hex|
+        expect { BLS::PointG2.from_hex(hex) }.to raise_error(BLS::PointError)
+      end
+    end
+
+    it 'round trips both signs of y' do
+      20.times do |i|
+        point = BLS::PointG1.from_private_key(i + 1)
+        expect(BLS::PointG1.from_hex(point.to_hex(compressed: true))).to eq(point)
+        expect(BLS::PointG1.from_hex(point.to_hex(compressed: true)).to_affine).to eq(point.to_affine)
+        expect(BLS::PointG1.from_hex(point.to_hex)).to eq(point)
+      end
+      [BLS::PointG1::ZERO, base].each do |point|
+        expect(BLS::PointG1.from_hex(point.to_hex(compressed: true))).to eq(point)
+        expect(BLS::PointG1.from_hex(point.to_hex)).to eq(point)
+      end
+    end
+  end
+
   describe 'prime-order subgroup validation' do
     it 'accepts points that belong to the subgroup' do
       [BLS::PointG1::BASE, BLS::PointG1::ZERO, BLS::PointG2::BASE, BLS::PointG2::ZERO].each do |p|

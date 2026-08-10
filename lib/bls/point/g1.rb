@@ -19,28 +19,48 @@ module BLS
     # @raise [BLS::PointError] Occurs when hex length does not match, or point is not on G1.
     def self.from_hex(hex)
       bytes = [hex].pack('H*')
-      point = case bytes.bytesize
-              when KEY_SIZE_COMPRESSED
-                compressed_value = hex.to_i(16)
-                b_flag = BLS.mod(compressed_value, POW_2_383) / POW_2_382
-                return ZERO if b_flag == 1
+      unless [KEY_SIZE_COMPRESSED, KEY_SIZE_UNCOMPRESSED].include?(bytes.bytesize)
+        raise PointError, 'Invalid point G1, expected 48 or 96 bytes.'
+      end
 
-                x = BLS.mod(compressed_value, POW_2_381)
-                full_y = BLS.mod(x**3 + Fp.new(Curve::B).value, Curve::P)
+      m_byte = bytes[0].unpack1('C') & 0xe0
+      if [0x20, 0x60, 0xe0].include?(m_byte)
+        raise PointError, "Invalid encoding flag: #{m_byte.to_s(16)}"
+      end
+
+      c_bit = m_byte & POINT_COMPRESSION_FLAG # compression flag
+      i_bit = m_byte & POINT_INFINITY_FLAG # infinity flag
+      s_bit = m_byte & POINT_Y_FLAG # y coordinate sign flag
+      bytes[0] = [bytes[0].unpack1('C') & 0x1f].pack('C') # set flag to 0
+
+      if i_bit == POINT_INFINITY_FLAG && bytes.unpack1('H*').to_i(16) > 0
+        raise PointError, 'Invalid point, infinity point should be all 0.'
+      end
+
+      point = if bytes.bytesize == KEY_SIZE_COMPRESSED && c_bit == POINT_COMPRESSION_FLAG # compressed format
+                return ZERO if i_bit == POINT_INFINITY_FLAG
+
+                x = bytes.unpack1('H*').to_i(16)
+                raise PointError, 'Invalid point G1, x must be less than the field order.' unless x < Curve::P
+
+                full_y = BLS.mod(x**3 + Curve::B, Curve::P)
                 y = BLS.pow_mod(full_y, (Curve::P + 1) / 4, Curve::P)
-                raise PointError, 'The given point is not on G1: y**2 = x**3 + b.' unless (BLS.pow_mod(y, 2, Curve::P) - full_y).zero?
+                raise PointError, 'The given point is not on G1: y**2 = x**3 + b.' unless BLS.pow_mod(y, 2, Curve::P) == full_y
 
-                a_flag = BLS.mod(compressed_value, POW_2_382) / POW_2_381
-                y = Curve::P - y unless ((y * 2) / Curve::P) == a_flag
+                y = Curve::P - y unless ((y * 2) / Curve::P) == (s_bit.zero? ? 0 : 1)
                 PointG1.new(Fp.new(x), Fp.new(y), Fp::ONE)
-              when KEY_SIZE_UNCOMPRESSED
-                return ZERO unless (bytes[0].unpack1('H*').to_i(16) & (1 << 6)).zero?
+              elsif bytes.bytesize == KEY_SIZE_UNCOMPRESSED && c_bit != POINT_COMPRESSION_FLAG # uncompressed format
+                return ZERO if i_bit == POINT_INFINITY_FLAG
 
                 x = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
                 y = bytes[PUBLIC_KEY_LENGTH..-1].unpack1('H*').to_i(16)
+                unless x < Curve::P && y < Curve::P
+                  raise PointError, 'Invalid point G1, coordinates must be less than the field order.'
+                end
+
                 PointG1.new(Fp.new(x), Fp.new(y), Fp::ONE)
               else
-                raise PointError, 'Invalid point G1, expected 48 or 96 bytes.'
+                raise PointError, 'Invalid point G1, compression flag does not match the encoded length.'
               end
       point.validate!
       point.validate_group!
