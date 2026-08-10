@@ -66,13 +66,33 @@ module BLS
   end
 
   # Normalize private key.
+  # A key at or above the group order is reduced rather than rejected, matching the reference
+  # implementation and the test vectors. Reducing raw entropy that way is slightly biased, so
+  # prefer drawing the key from 0 < k < Fr::ORDER to begin with.
   # @param [String|Integer] private_key a private key with hex or number.
   # @return [BLS::Fr] Normalized private key.
-  # @raise [BLS::Error] Occur when the private key is zero.
+  # @raise [BLS::Error] Occur when the private key is not a positive hex string or integer,
+  # or when it reduces to zero.
   def normalize_priv_key(private_key)
-    k = private_key.is_a?(String) ? private_key.to_i(16) : private_key
-    raise BLS::Error, "Private key must be 0 < private_key < #{Fr::ORDER}" if k <= 0
-    Fr.new(k)
+    k = case private_key
+        when String
+          # String#to_i stops at the first character it cannot read and returns what it has,
+          # so a mistyped or truncated key would otherwise turn into a different, much
+          # smaller one without any sign that it happened.
+          raise BLS::Error, 'Private key must be a hex string.' unless private_key.match?(/\A[0-9a-fA-F]+\z/)
+
+          private_key.to_i(16)
+        when Integer
+          private_key
+        else
+          raise BLS::Error, 'Private key must be Integer or String.'
+        end
+    raise BLS::Error, 'Private key must be positive.' unless k.positive?
+
+    key = Fr.new(k)
+    raise BLS::Error, "Private key must not be a multiple of #{Fr::ORDER}." if key.zero?
+
+    key
   end
 
   # Convert number to +byte_length+ bytes hex string.
