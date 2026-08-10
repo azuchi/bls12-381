@@ -1,5 +1,9 @@
 # frozen_string_literal: true
 
+# The suite is minutes of field arithmetic through small, hot methods, which is what YJIT is
+# good at. Enabled before bls is loaded, and skipped on a build that was compiled without it.
+RubyVM::YJIT.enable if defined?(RubyVM::YJIT) && RubyVM::YJIT.respond_to?(:enable)
+
 require 'bls'
 require 'securerandom'
 require 'json'
