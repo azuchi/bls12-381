@@ -181,15 +181,17 @@ RSpec.describe 'bls12-381' do
     private_keys = %w[18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4 ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c 16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5]
     public_keys = private_keys.map { |p| BLS.get_public_key(p) }
 
-    signature2 = private_keys.map { |p| BLS.sign(message, p) }
-    agg_public_keys2 = BLS.aggregate_public_keys(public_keys)
-    agg_signatures2 = BLS.aggregate_signatures(signature2)
-    expect(BLS.verify(agg_signatures2, message, agg_public_keys2)).to be true
-
     messages = %w[d2 0d98 05caf3]
     signatures3 = private_keys.map.with_index { |p, i| BLS.sign(messages[i], p)}
     agg_signatures3 = BLS.aggregate_signatures(signatures3)
     expect(BLS.verify_batch(agg_signatures3, messages, public_keys)).to be true
+
+    proofs = private_keys.map { |p| BLS.pop_prove(p) }
+    public_keys.zip(proofs).each { |pubkey, proof| expect(BLS.pop_verify(pubkey, proof)).to be true }
+
+    signatures2 = private_keys.map { |p| BLS.sign(message, p, scheme: :pop) }
+    agg_signatures2 = BLS.aggregate_signatures(signatures2)
+    expect(BLS.fast_aggregate_verify(agg_signatures2, message, public_keys)).to be true
   end
 
   describe '#paring' do
@@ -206,6 +208,61 @@ RSpec.describe 'bls12-381' do
 
       paring2 = BLS.pairing(bP, aQ)
       expect(paring1).to eq(paring2)
+    end
+  end
+
+  describe 'proof of possession scheme' do
+    let(:sk) { SecureRandom.hex(32) }
+    let(:other_sk) { SecureRandom.hex(32) }
+    let(:message) { SecureRandom.hex(32) }
+
+    [:g1, :g2].each do |key_type|
+      context "with a #{key_type} public key" do
+        it 'accepts its own proof and rejects everyone else\'s' do
+          pubkey = BLS.get_public_key(sk, key_type: key_type)
+          proof = BLS.pop_prove(sk, key_type: key_type)
+          expect(BLS.pop_verify(pubkey, proof)).to be true
+          expect(BLS.pop_verify(BLS.get_public_key(other_sk, key_type: key_type), proof)).to be false
+        end
+      end
+    end
+
+    it 'separates the domains of the two schemes' do
+      pubkey = BLS.get_public_key(sk)
+      basic = BLS.sign(message, sk, scheme: :basic)
+      pop = BLS.sign(message, sk, scheme: :pop)
+      expect(basic).not_to eq(pop)
+      expect(BLS.verify(basic, message, pubkey, scheme: :basic)).to be true
+      expect(BLS.verify(pop, message, pubkey, scheme: :pop)).to be true
+      expect(BLS.verify(basic, message, pubkey, scheme: :pop)).to be false
+      expect(BLS.verify(pop, message, pubkey, scheme: :basic)).to be false
+      # A proof of possession is signed under its own tag, so it cannot be replayed as a
+      # signature over the public key it proves.
+      proof = BLS.pop_prove(sk)
+      expect(BLS.verify(proof, pubkey.to_hex(compressed: true), pubkey, scheme: :pop)).to be false
+    end
+
+    it 'rejects an unknown scheme' do
+      expect { BLS.sign(message, sk, scheme: :unknown) }.to raise_error(BLS::Error, /Unknown scheme/)
+    end
+
+    it 'verifies an aggregate over a single message' do
+      pubkeys = [sk, other_sk].map { |k| BLS.get_public_key(k) }
+      signature = BLS.aggregate_signatures([sk, other_sk].map { |k| BLS.sign(message, k, scheme: :pop) })
+      expect(BLS.fast_aggregate_verify(signature, message, pubkeys)).to be true
+      expect(BLS.fast_aggregate_verify(signature, message, [pubkeys.first])).to be false
+      expect(BLS.fast_aggregate_verify(signature, SecureRandom.hex(32), pubkeys)).to be false
+    end
+
+    it 'stops a rogue key from joining an aggregate' do
+      victim = BLS.get_public_key(sk)
+      # The attacker registers g * other_sk - victim so that the aggregate collapses to a key
+      # they alone control, letting them sign for the victim.
+      rogue = BLS.get_public_key(other_sk) + victim.negate
+      forged = BLS.sign(message, other_sk, scheme: :pop)
+      expect(BLS.fast_aggregate_verify(forged, message, [victim, rogue])).to be true
+      # They cannot back the rogue key with a proof, because they do not know its discrete log.
+      expect(BLS.pop_verify(rogue, BLS.pop_prove(other_sk))).to be false
     end
   end
 

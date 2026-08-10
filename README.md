@@ -49,18 +49,12 @@ signature.to_signature
 is_correct = BLS.verify(signature, message, public_key)
 => true
 
-# Sign 1 msg with 3 keys
 private_keys = [
   '18f020b98eb798752a50ed0563b079c125b0db5dd0b1060d1c1b47d4a193e1e4',
   'ed69a8c50cf8c9836be3b67c7eeff416612d45ba39a5c099d48fa668bf558c9c',
   '16ae669f3be7a2121e17d0c68c05a8f3d6bef21ec0f2315f1d7aec12484e4cf5'
 ]
 public_keys = private_keys.map { |p| BLS.get_public_key(p) }
-signatures2 = private_keys.map { |p| BLS.sign(message, p) }
-agg_public_keys2 = BLS.aggregate_public_keys(public_keys)
-agg_signatures2 = BLS.aggregate_signatures(signatures2)
-is_correct2 = BLS.verify(agg_signatures2, message, agg_public_keys2)
-=> true
 
 # Sign 3 msgs with 3 keys
 messages = %w[d2 0d98 05caf3]
@@ -68,7 +62,42 @@ signatures3 = private_keys.map.with_index { |p, i| BLS.sign(messages[i], p)}
 agg_signatures3 = BLS.aggregate_signatures(signatures3)
 is_correct3 = BLS.verify_batch(agg_signatures3, messages, public_keys)
 => true
+
+# Sign 1 msg with 3 keys.
+# This needs the proof of possession scheme: see the warning below.
+proofs = private_keys.map { |p| BLS.pop_prove(p) }
+public_keys.zip(proofs).each { |pubkey, proof| raise 'invalid key' unless BLS.pop_verify(pubkey, proof) }
+
+signatures2 = private_keys.map { |p| BLS.sign(message, p, scheme: :pop) }
+agg_signatures2 = BLS.aggregate_signatures(signatures2)
+is_correct2 = BLS.fast_aggregate_verify(agg_signatures2, message, public_keys)
+=> true
 ```
+
+## Signature schemes
+
+This library implements two of the schemes of
+[draft-irtf-cfrg-bls-signature](https://datatracker.ietf.org/doc/html/draft-irtf-cfrg-bls-signature-05),
+selected with the `scheme:` keyword of `BLS.sign` / `BLS.verify` / `BLS.verify_batch`.
+They use different domain separation tags, so a signature made under one never verifies
+under the other. The default is `:basic`, which is what earlier versions of this gem used.
+
+| scheme | aggregation |
+| --- | --- |
+| `:basic` (default) | `BLS.verify_batch` only, and **only when every message is distinct** |
+| `:pop` | `BLS.fast_aggregate_verify`, for many signatures over a single message |
+
+**Aggregating public keys is unsafe without proofs of possession.** Given a public key
+`pk_victim`, an attacker can register `pk_attacker = g * x - pk_victim` for an `x` they
+choose. The two keys aggregate to `g * x`, so the attacker alone can produce a signature
+that verifies against the aggregate, making it look like the victim signed. This is the
+rogue key attack, and it is why `:basic` supports no single-message aggregation at all.
+
+`BLS.pop_prove` closes the hole by signing a key with itself: producing a proof requires
+the private key, which the attacker does not have for `pk_attacker`. Call `BLS.pop_verify`
+on every public key **before** passing it to `BLS.aggregate_public_keys` or
+`BLS.fast_aggregate_verify` — neither of them can do it for you, since they never see the
+proofs.
 
 ## License
 

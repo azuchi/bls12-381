@@ -1,7 +1,10 @@
 module BLS
   class PointG1 < BLS::ProjectivePoint
 
+    # Ciphersuite IDs of draft-irtf-cfrg-bls-signature section 4.3.
     DST_BASIC = 'BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_NUL_'
+    DST_POP = 'BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_'
+    DST_POP_PROOF = 'BLS_POP_BLS12381G1_XMD:SHA-256_SSWU_RO_POP_'
 
     KEY_SIZE_COMPRESSED = 48
     KEY_SIZE_UNCOMPRESSED = 96
@@ -74,12 +77,13 @@ module BLS
 
     # Convert hash to PointG1
     # @param [String] message a hash with hex format.
+    # @param [Symbol] scheme signature scheme whose domain separation tag is used, :basic or :pop.
     # @return [BLS::PointG1] point.
     # @raise [BLS::PointError]
-    def self.hash_to_curve(message)
+    def self.hash_to_curve(message, scheme: :basic)
       raise PointError, 'expected hex string' unless message[/^[a-fA-F0-9]*$/]
 
-      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, PointG1::DST_BASIC)
+      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, dst(scheme))
       p = h2c.digest([message].pack('H*'))
 
       PointG1.new(Fp.new(p.x), Fp.new(p.y), Fp::ONE)

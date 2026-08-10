@@ -7,15 +7,17 @@ module BLS
 
     # @param [String] message hash value with hex format.
     # @param [Integer] len_in_bytes length
+    # @param [String] dst Domain separation tag. Mixing tags across schemes breaks the
+    # domain separation the ciphersuites rely on, so it must always be passed explicitly.
     # @return [Array[Integer]] byte array.
     # @raise BLS::Error
-    def expand_message_xmd(message, len_in_bytes)
+    def expand_message_xmd(message, len_in_bytes, dst)
       b_in_bytes = BigDecimal(SHA256_DIGEST_SIZE)
       r_in_bytes = b_in_bytes * 2
       ell = (BigDecimal(len_in_bytes) / b_in_bytes).ceil
       raise BLS::Error, 'Invalid xmd length' if ell > 255
 
-      dst_prime = PointG2::DST_BASIC.bytes + BLS.i2osp(PointG2::DST_BASIC.bytesize, 1)
+      dst_prime = dst.bytes + BLS.i2osp(dst.bytesize, 1)
       z_pad = BLS.i2osp(0, r_in_bytes)
       l_i_b_str = BLS.i2osp(len_in_bytes, 2)
       b = Array.new(ell)
@@ -34,12 +36,13 @@ module BLS
 
       # Convert hash to Field.
       # @param [String] message hash value with hex format.
+      # @param [String] dst Domain separation tag of the ciphersuite in use.
       # @return [Array[Integer]] byte array.
-      def hash_to_field(message, random_oracle: true)
+      def hash_to_field(message, dst = PointG2::DST_BASIC, random_oracle: true)
         degree = 2
         count = random_oracle ? 2 : 1
         len_in_bytes = count * degree * LENGTH
-        pseudo_random_bytes = BLS::H2C.expand_message_xmd(message, len_in_bytes)
+        pseudo_random_bytes = BLS::H2C.expand_message_xmd(message, len_in_bytes, dst)
         u = Array.new(count)
         count.times do |i|
           e = Array.new(degree)

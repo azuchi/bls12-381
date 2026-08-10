@@ -338,7 +338,7 @@ RSpec.describe 'bls12-381 Point' do
 
     it 'rejects a G2 point that is on the curve but outside the subgroup' do
       # The SSWU output before cofactor clearing lies on E'(Fp2) but not in G2.
-      u = BLS::H2C::G2.hash_to_field('00' * 32)
+      u = BLS::H2C::G2.hash_to_field('00' * 32, BLS::PointG2::DST_BASIC)
       p = BLS::PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[0])))
       expect { p.validate! }.not_to raise_error
       expect(p.in_group?).to be false

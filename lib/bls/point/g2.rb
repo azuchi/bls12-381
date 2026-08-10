@@ -3,7 +3,10 @@ module BLS
 
     attr_accessor :precomputes
 
+    # Ciphersuite IDs of draft-irtf-cfrg-bls-signature section 4.2.
     DST_BASIC = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_NUL_'
+    DST_POP = 'BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_'
+    DST_POP_PROOF = 'BLS_POP_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_'
 
     KEY_SIZE_COMPRESSED = 96
     KEY_SIZE_UNCOMPRESSED = 192
@@ -73,12 +76,13 @@ module BLS
 
     # Convert hash to PointG2
     # @param [String] message a hash with hex format.
+    # @param [Symbol] scheme signature scheme whose domain separation tag is used, :basic or :pop.
     # @return [BLS::PointG2] point.
     # @raise [BLS::PointError]
-    def self.hash_to_curve(message)
+    def self.hash_to_curve(message, scheme: :basic)
       raise PointError, 'expected hex string' unless message[/^[a-fA-F0-9]*$/]
 
-      u = BLS::H2C::G2.hash_to_field(message)
+      u = BLS::H2C::G2.hash_to_field(message, dst(scheme))
       q0 = PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[0])))
       q1 = PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[1])))
       r = q0 + q1
