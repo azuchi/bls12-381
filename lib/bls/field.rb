@@ -700,12 +700,17 @@ module BLS
 
   
 
+  # sgn0 for GF(p^2), from RFC 9380 section 4.1.
+  # Combined with | and & rather than || and &&: sign_0 is 0 or 1, and 0 is truthy in Ruby,
+  # so a disjunction would always short circuit on it and x_1 would never be reached.
+  # @param [BLS::Fp2] x
+  # @return [Integer] 0 or 1.
   def sgn0(x)
     x0, x1 = x.values
     sign_0 = x0 % 2
-    zero_0 = x0 === 0
+    zero_0 = x0.zero? ? 1 : 0
     sign_1 = x1 % 2
-    sign_0 || (zero_0 && sign_1)
+    sign_0 | (zero_0 & sign_1)
   end
 
   def sqrt_div_fp2(u, v)
