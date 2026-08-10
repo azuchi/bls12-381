@@ -54,7 +54,11 @@ module BLS
                         else
                           (y.coeffs[1].value * 2) / Curve::P == 1 ? 1 : 0
                         end
-                y = s_bit > 0 && bit_y > 0 ? y : y.negate
+                # Flip to whichever root the encoding asked for. Written as a comparison, the
+                # way G1 does it, rather than as `s_bit > 0 && bit_y > 0 ? y : y.negate`:
+                # that form is only right because sqrt returns the root of sign 1, which it
+                # does not promise, and it would negate a root of sign 0 that wanted sign 0.
+                y = y.negate unless bit_y == (s_bit.zero? ? 0 : 1)
                 PointG2.new(x, y, Fp2::ONE)
               elsif bytes.bytesize == KEY_SIZE_UNCOMPRESSED && c_bit != POINT_COMPRESSION_FLAG # uncompressed format
                 return ZERO if i_bit == POINT_INFINITY_FLAG
