@@ -42,6 +42,19 @@ module BLS
       end
     end
 
+    # Check that +message+ is a byte string written in hex, since that is what callers hand
+    # to {hash_to_curve} and it gets unpacked with pack('H*').
+    # An odd number of digits would be padded to a whole byte, making '000' and '0000' the
+    # same message, and \A..\z rather than ^..$ keeps a newline from carrying a non-hex tail
+    # past the check.
+    # @param [String] message a hash with hex format.
+    # @raise [PointError] Occur when the message is not an even length hex string.
+    def self.validate_hex!(message)
+      return if message.is_a?(String) && message.match?(/\A(?:[0-9a-fA-F]{2})*\z/)
+
+      raise PointError, 'expected hex string'
+    end
+
     def zero?
       z.zero?
     end

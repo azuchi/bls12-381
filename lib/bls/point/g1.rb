@@ -101,7 +101,7 @@ module BLS
     # @return [BLS::PointG1] point.
     # @raise [BLS::PointError]
     def self.hash_to_curve(message, scheme: :basic)
-      raise PointError, 'expected hex string' unless message[/^[a-fA-F0-9]*$/]
+      validate_hex!(message)
 
       h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, dst(scheme))
       p = h2c.digest([message].pack('H*'))

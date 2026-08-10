@@ -84,7 +84,7 @@ module BLS
     # @return [BLS::PointG2] point.
     # @raise [BLS::PointError]
     def self.hash_to_curve(message, scheme: :basic)
-      raise PointError, 'expected hex string' unless message[/^[a-fA-F0-9]*$/]
+      validate_hex!(message)
 
       u = BLS::H2C::G2.hash_to_field(message, dst(scheme))
       q0 = PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[0])))

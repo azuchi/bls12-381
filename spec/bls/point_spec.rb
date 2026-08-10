@@ -311,6 +311,36 @@ RSpec.describe 'bls12-381 Point' do
     end
   end
 
+  describe '.hash_to_curve message validation' do
+    def expect_rejected(message)
+      [BLS::PointG1, BLS::PointG2].each do |klass|
+        expect { klass.hash_to_curve(message) }.to raise_error(BLS::PointError, 'expected hex string')
+      end
+    end
+
+    # ^ and $ match at line boundaries in Ruby, so the old check passed anything whose first
+    # line was hex, and an odd number of digits was silently padded to a whole byte.
+    it 'rejects a message that is not entirely hex' do
+      ["0011\nzzzz", "zzzz\n0011", "0011\n", 'zzzz', '00zz', "00 11"].each { |m| expect_rejected(m) }
+    end
+
+    it 'rejects an odd number of digits' do
+      %w[0 000 abcde].each { |m| expect_rejected(m) }
+    end
+
+    it 'rejects anything that is not a string' do
+      [1234, nil, :aabb, ['aabb']].each { |m| expect_rejected(m) }
+    end
+
+    it 'accepts hex of any even length, in either case' do
+      ['', '00', '64726e3da8', 'aa' * 32, 'AABBCC', 'aAbBcC'].each do |message|
+        expect { BLS::PointG1.hash_to_curve(message) }.not_to raise_error
+        expect { BLS::PointG2.hash_to_curve(message) }.not_to raise_error
+      end
+      expect(BLS::PointG2.hash_to_curve('AABBCC')).to eq(BLS::PointG2.hash_to_curve('aabbcc'))
+    end
+  end
+
   describe 'G1 serialization validation' do
     let(:base) { BLS::PointG1::BASE }
     let(:affine) { base.to_affine }
