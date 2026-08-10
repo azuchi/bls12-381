@@ -136,6 +136,10 @@ module BLS
     end
     alias - subtract
 
+    # Scalar multiplication by plain double-and-add, which skips the addition entirely on a
+    # zero bit and so takes a number of operations that tracks the scalar's Hamming weight.
+    # Only for scalars an observer already knows, such as the curve parameters. {multiply}
+    # hides that particular pattern, but is not constant time either.
     def multiply_unsafe(scalar)
       n = scalar.is_a?(Field) ? scalar.value : scalar
       raise PointError, 'Point#multiply: invalid scalar, expected positive integer' if n <= 0
@@ -200,7 +204,15 @@ module BLS
       nums
     end
 
-    # Constant time multiplication. Uses wNAF.
+    # Scalar multiplication using wNAF.
+    #
+    # This is NOT constant time, despite what {multiply_unsafe} implies by contrast. wNAF
+    # gives every window an addition, but the point it adds is read at an index derived from
+    # the scalar, and the additions themselves branch on whether an operand is the identity
+    # or the two are equal. Underneath, Ruby's bignum arithmetic and the modulo in Fp both run
+    # in time that depends on their operands. Anything the scalar decides is therefore visible
+    # to something watching timing or cache behaviour, which matters here because #sign and
+    # .from_private_key reach this with the private key. See the README.
     def multiply(scalar)
       n = scalar.is_a?(Field) ? scalar.value : scalar
       raise PointError, 'Invalid scalar, expected positive integer' if n <= 0

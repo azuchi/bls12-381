@@ -4,7 +4,7 @@ This library is a Ruby BLS12-381 implementation based on the JavaScript implemen
 In addition to that, it is possible to switch between public key and signature group (G1 and G2).
 
 Note: This library has passed the same tests as noble-bls12-381, but has not been audited to prove its safety.
-Please be careful when using this.
+Please be careful when using this, and read [Side channels](#side-channels) before signing with it.
 
 ## Installation
 
@@ -101,6 +101,24 @@ the private key, which the attacker does not have for `pk_attacker`. Call `BLS.p
 on every public key **before** passing it to `BLS.aggregate_public_keys` or
 `BLS.fast_aggregate_verify` — neither of them can do it for you, since they never see the
 proofs.
+
+## Side channels
+
+**Nothing here is constant time, and signing is not safe against an attacker who can
+measure it.** `BLS.sign` and `BLS.get_public_key` multiply a curve point by the private
+key, and that multiplication leaks:
+
+* the scalar picks which precomputed point each window adds, so it decides which memory
+  gets touched, which is visible through the cache;
+* point addition returns early when an operand is the identity or the two are equal;
+* underneath it all, Ruby's bignum arithmetic and the `%` in `BLS::Fp` take time that
+  depends on their operands.
+
+A pure Ruby implementation cannot fix this: it has no control over how the interpreter
+lays out or times its integers. Treat this gem as suitable where the private key operation
+cannot be observed — verification of untrusted input is fine, since it touches no secret —
+and use a binding to a constant time library such as [blst](https://github.com/supranational/blst)
+where an attacker can watch the signer.
 
 ## License
 
