@@ -5,15 +5,23 @@ module BLS
 
     LENGTH = 64
 
+    # Longest tag expand_message_xmd can carry as is; its length has to fit in one byte.
+    MAX_DST_LENGTH = 255
+    # Prefix under which a longer tag is hashed down to size, from RFC 9380 section 5.3.3.
+    OVERSIZE_DST_PREFIX = 'H2C-OVERSIZE-DST-'
+
     module_function
 
     # @param [String] message hash value with hex format.
     # @param [Integer] len_in_bytes length
     # @param [String] dst Domain separation tag. Mixing tags across schemes breaks the
     # domain separation the ciphersuites rely on, so it must always be passed explicitly.
+    # A tag longer than {MAX_DST_LENGTH} bytes is replaced by its hash, as RFC 9380 section
+    # 5.3.3 prescribes, so any length works and the result matches other implementations.
     # @return [Array[Integer]] byte array.
     # @raise BLS::Error
     def expand_message_xmd(message, len_in_bytes, dst)
+      dst = Digest::SHA256.digest(OVERSIZE_DST_PREFIX + dst) if dst.bytesize > MAX_DST_LENGTH
       b_in_bytes = BigDecimal(SHA256_DIGEST_SIZE)
       r_in_bytes = b_in_bytes * 2
       ell = (BigDecimal(len_in_bytes) / b_in_bytes).ceil
