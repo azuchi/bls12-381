@@ -119,11 +119,13 @@ end
 Passing the wrong type or the wrong number of coefficients is a mistake in the calling code
 rather than a fact about a key, and raises `ArgumentError` as it would anywhere else in Ruby.
 
-Verification never raises over the data it is given. `BLS.verify`, `BLS.verify_batch`,
-`BLS.fast_aggregate_verify` and `BLS.pop_verify` return `false` for anything they will not
-accept, including the point at infinity and an empty set of signers, so untrusted input cannot
-turn into an exception. Deserializing that input with `from_hex` beforehand still raises, which
-is where a malformed encoding is caught.
+Verification does not raise over the keys and signatures it is given. `BLS.verify`,
+`BLS.verify_batch`, `BLS.fast_aggregate_verify` and `BLS.pop_verify` return `false` for any
+point they will not accept, including the point at infinity and an empty set of signers, so an
+untrusted key or signature cannot turn into an exception. Deserializing it with `from_hex`
+beforehand still raises, which is where a malformed encoding is caught. The message is
+different: it is the hex of a hash the caller computed, and one that is not hex, or has an odd
+number of digits, raises `BLS::PointError` from signing and verifying alike.
 
 ## Threads
 
