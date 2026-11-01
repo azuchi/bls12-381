@@ -27,8 +27,8 @@ Or install it yourself as:
 ```ruby
 require 'bls'
 
-# Generate private key.
-private_key = SecureRandom.random_number(BLS::Curve::R - 1)
+# Generate private key: an integer in 1..(R - 1). Zero is not a key, so shift the range up.
+private_key = 1 + SecureRandom.random_number(BLS::Curve::R - 1)
 
 # Or you can use hex string.
 private_key = '67d53f170b908cabb9eb326c3c337762d59289a8fec79f7bc9254b584b73265c'
@@ -44,7 +44,7 @@ message = '64726e3da8'
 signature = BLS.sign(message, private_key)
 # signature is BLS::PointG2 object. You can get signature with hex format using #to_hex method.
 # If you want to use BLS::PointG1 signature, use BLS.sign(message, p, sig_type: :g1)
-signature.to_signature
+signature.to_hex(compressed: true)
 
 is_correct = BLS.verify(signature, message, public_key)
 => true
@@ -164,4 +164,4 @@ The gem is available as open source under the terms of the [MIT License](https:/
 
 ## Code of Conduct
 
-Everyone interacting in the BlS12-381 project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/[USERNAME]/bls12-381/blob/master/CODE_OF_CONDUCT.md).
+Everyone interacting in the BLS12-381 project's codebases, issue trackers, chat rooms and mailing lists is expected to follow the [code of conduct](https://github.com/azuchi/bls12-381/blob/main/CODE_OF_CONDUCT.md).
