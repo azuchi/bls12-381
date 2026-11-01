@@ -70,6 +70,26 @@ RSpec.describe 'pairing' do
       0x0f41e58663bf08cf068672cbd01a7ec73baca4d72ca93544deff686bfd6df543d48eaa24afe47e1efde449383b676631]))
   end
 
+  # A point that is on the curve but outside the subgroup paired without complaint, so a
+  # caller who built one by hand, bypassing from_hex, got a value that means nothing.
+  it 'refuses a point outside the prime-order subgroup' do
+    u = BLS::H2C::G2.hash_to_field('00' * 32, BLS::PointG2::DST_BASIC)
+    rogue_g2 = BLS::PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[0])))
+    expect(rogue_g2.in_group?).to be false
+    expect { BLS.pairing(BLS::PointG1::BASE, rogue_g2) }.to raise_error(BLS::PointError, /subgroup/)
+
+    x = BLS::Fp.new(1)
+    rogue_g1 = loop do
+      rhs = x**3 + BLS::Fp.new(BLS::Curve::B)
+      y = rhs**((BLS::Curve::P + 1) / 4)
+      candidate = BLS::PointG1.new(x, y, BLS::Fp::ONE) if y.square == rhs
+      break candidate if candidate && !candidate.in_group?
+
+      x += BLS::Fp::ONE
+    end
+    expect { BLS.pairing(rogue_g1, BLS::PointG2::BASE) }.to raise_error(BLS::PointError, /subgroup/)
+  end
+
   it 'test final_exponentiate' do
     p1 = BLS::Fp12.from_tuple([
       690392658038414015999440694435086329841032295415825549843130960252222448232974816207293269712691075396080336239827,

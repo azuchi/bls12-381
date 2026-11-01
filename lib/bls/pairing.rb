@@ -6,6 +6,9 @@ module BLS
   # @param [Boolean] with_final_exp
   # @return [BLS::Fp12]
   # @raise [BLS::PairingError] Occur when p.zero? or q.zero?
+  # @raise [BLS::PointError] Occur when either point is off its curve or outside its
+  # prime-order subgroup. from_hex has already checked what it returns; this is for points
+  # built by hand, for which the pairing would otherwise be computed without complaint.
   # @raise [ArgumentError]
   def pairing(p, q, with_final_exp: true)
     raise ArgumentError, 'p should be BLS::PointG1 object' unless p.is_a?(BLS::PointG1)
@@ -14,6 +17,8 @@ module BLS
 
     p.validate!
     q.validate!
+    p.validate_group!
+    q.validate_group!
     looped = p.miller_loop(q)
     with_final_exp ? looped.final_exponentiate : looped
   end

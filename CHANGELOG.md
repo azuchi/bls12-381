@@ -7,6 +7,7 @@
 - Raising a field element to a negative power raises `ArgumentError`; `Fp2`, `Fp6` and `Fp12` used to answer with one.
 - `==` on `Fp2`, `Fp6` and `Fp12` returns false for anything that is not the same kind of element instead of raising `NoMethodError`.
 - `==` on a point returns false for a point of the other group, nil or anything else that is not a point of the same group, instead of raising `BLS::PointError`.
+- `BLS.pairing` refuses a point outside the prime-order subgroup with `BLS::PointError`; it used to check only that the point was on the curve.
 
 ### Changed
 
