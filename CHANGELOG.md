@@ -15,6 +15,7 @@
 - `BLS.norm_p1` and `BLS.norm_p2`, which nothing used, are gone.
 - The `bigdecimal` dependency is gone.
 - Requires Ruby 3.3 or later, matching what is tested.
+- Depend on h2c 0.4.x, which no longer defines a top-level `BLS` module of its own.
 
 ## [0.4.0] - 2026-08-10
 
