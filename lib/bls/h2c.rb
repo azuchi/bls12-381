@@ -1,3 +1,5 @@
+require 'bigdecimal'
+
 module BLS
   module H2C
 

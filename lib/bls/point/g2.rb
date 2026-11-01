@@ -11,7 +11,6 @@ module BLS
     KEY_SIZE_COMPRESSED = 96
     KEY_SIZE_UNCOMPRESSED = 192
 
-    MAX_BITS = Fp2::MAX_BITS
     BASE = PointG2.new(Fp2.new(Curve::G2_X), Fp2.new(Curve::G2_Y), Fp2::ONE)
     ZERO = PointG2.new(Fp2::ONE, Fp2::ONE, Fp2::ZERO)
 

@@ -11,7 +11,6 @@ module BLS
 
     BASE = PointG1.new(Fp.new(Curve::G_X), Fp.new(Curve::G_Y), Fp::ONE)
     ZERO = PointG1.new(Fp::ONE, Fp::ONE, Fp::ZERO)
-    MAX_BITS = Fp::MAX_BITS
 
     # Parse PointG1 from form hex.
     # @param [String] hex hex value of PointG1.

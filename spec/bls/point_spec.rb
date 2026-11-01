@@ -267,6 +267,38 @@ RSpec.describe 'bls12-381 Point' do
       end
     end
 
+    # The window table is sized from the 255 bits of r, so the result has to agree with the
+    # plain double-and-add for scalars written with more bits than that, which [n]P == [n mod r]P
+    # guarantees for every point in the subgroup.
+    it 'reduces the scalar modulo the group order' do
+      r = BLS::Curve::R
+      [[g, BLS::PointG1::ZERO], [g2, BLS::PointG2::ZERO]].each do |point, zero|
+        expect(point * r).to eq(zero)
+        expect(point * (r + 1)).to eq(point)
+        expect(point * (2 * r + 7)).to eq(point.multiply_unsafe(7))
+        expect(point * (BLS::Curve::P**2 - 1)).to eq(point.multiply_unsafe((BLS::Curve::P**2 - 1) % r))
+      end
+    end
+
+    # A window whose digit comes out above 2**(w - 1) carries 1 into the next one. When that
+    # happens in the scalar's top window the carry needs a window of its own, so these scalars,
+    # whose top bits sit just under r's, go wrong for every width that divides 255 (3, 5, 15,
+    # 17, 51, 85) unless the table is one window longer than ceil(255 / w).
+    it 'keeps the carry out of the top window for every window width' do
+      r = BLS::Curve::R
+      scalars = [r - 1, r - 2, 17 << 250, (28 << 250) + 12_345, (7 << 252) + 1, (0b1110 << 251) + 99]
+      [1, 3, 4, 5, 8, 15, 17].each do |w|
+        point = BLS::PointG1::BASE.negate.negate
+        point.calc_multiply_precomputes(w)
+        scalars.each do |k|
+          expect(point * k).to eq(point.multiply_unsafe(k)), "w=#{w} k=#{k.to_s(16)}"
+        end
+      end
+      point = BLS::PointG2::BASE.negate.negate
+      point.calc_multiply_precomputes(5)
+      scalars.each { |k| expect(point * k).to eq(point.multiply_unsafe(k)) }
+    end
+
     it 'PSI cofactor cleaning same as multiplication' do
       points = [
         BLS::PointG2.new(

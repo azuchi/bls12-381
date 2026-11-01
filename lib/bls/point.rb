@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'bigdecimal'
 require 'h2c'
 
 module BLS
@@ -15,6 +14,11 @@ module BLS
 
   # Abstract Point class that consist of projective coordinates.
   class ProjectivePoint
+
+    # Bits in the group order r. Every point this library hands out lies in the subgroup of
+    # that order, where [n]P == [n mod r]P, so this, not the size of the base field, is what
+    # a scalar multiplication has to cover.
+    SCALAR_BITS = Curve::R.bit_length
 
     attr_reader :x, :y, :z
     attr_accessor :m_precomputes
@@ -227,14 +231,19 @@ module BLS
     def multiply(scalar)
       n = scalar.is_a?(Field) ? scalar.value : scalar
       raise PointError, 'Invalid scalar, expected positive integer' if n <= 0
-      raise PointError, "Scalar has more bits than maxBits, shouldn't happen" if n.bit_length > max_bits
+
+      # Reduced modulo r so that wNAF has {SCALAR_BITS} bits to walk, whatever was passed in.
+      # The table used to be sized from the base field instead, 381 bits for G1 and 762 for
+      # G2, and every window past the scalar's top bit was a wasted addition.
+      n %= Curve::R
+      return zero if n.zero?
 
       wNAF(n).first
     end
     alias * multiply
 
     def precomputes_window(w)
-      windows = (BigDecimal(max_bits) / w).ceil
+      windows = window_count(w)
       window_size = 2**(w - 1)
       points = []
       p = self
@@ -250,8 +259,17 @@ module BLS
       points
     end
 
-    def max_bits
-      self.class.const_get(:MAX_BITS)
+    # Number of width-+w+ windows that {wNAF} walks and {precomputes_window} must cover.
+    #
+    # One bit more than the scalar has. A window whose digit comes out above 2**(w - 1) is
+    # recoded as a negative digit and carries 1 into the next window, and when the top
+    # window of the scalar does that, the carry needs a window of its own or it is dropped
+    # on the floor. With r's top five bits being 11100, a width of 5 hits this for about
+    # four scalars in ten.
+    # @param [Integer] w window width.
+    # @return [Integer] window count.
+    def window_count(w)
+      (SCALAR_BITS + w) / w
     end
 
     def normalize_z(points)
@@ -286,7 +304,7 @@ module BLS
       w, precomputes = m_precomputes || [1, precomputes_window(1)]
       p = zero
       f = zero
-      windows = (BigDecimal(max_bits) / w).ceil
+      windows = window_count(w)
       window_size = 2**(w - 1)
       mask = (2**w - 1)
       max_number = 2**w
