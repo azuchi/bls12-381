@@ -12,7 +12,7 @@ Gem::Specification.new do |spec|
   spec.description   = 'BLS12-381 implementation for Ruby.'
   spec.homepage      = 'https://github.com/azuchi/bls12-381'
   spec.license       = 'MIT'
-  spec.required_ruby_version = Gem::Requirement.new('>= 2.4.0')
+  spec.required_ruby_version = Gem::Requirement.new('>= 3.3.0')
 
   spec.metadata['homepage_uri'] = spec.homepage
   spec.metadata['source_code_uri'] = spec.homepage
@@ -28,7 +28,6 @@ Gem::Specification.new do |spec|
 
   # Uncomment to register a new dependency of your gem
   spec.add_dependency "h2c", ">= 0.2.1", "< 0.3"
-  spec.add_dependency "bigdecimal"
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake', '>= 12.3.3'

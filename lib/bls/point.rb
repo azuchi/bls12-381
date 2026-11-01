@@ -336,14 +336,6 @@ module BLS
 
   module_function
 
-  def norm_p1(point)
-    point.is_a?(PointG1) ? point : PointG1.from_hex(point)
-  end
-
-  def norm_p2(point)
-    point.is_a?(PointG2) ? point : PointG2.from_hex(point)
-  end
-
   def norm_p1h(point, scheme: :basic)
     point.is_a?(PointG1) ? point : PointG1.hash_to_curve(point, scheme: scheme)
   end

@@ -1,5 +1,3 @@
-require 'bigdecimal'
-
 module BLS
   module H2C
 
@@ -22,9 +20,9 @@ module BLS
     # @raise BLS::Error
     def expand_message_xmd(message, len_in_bytes, dst)
       dst = Digest::SHA256.digest(OVERSIZE_DST_PREFIX + dst) if dst.bytesize > MAX_DST_LENGTH
-      b_in_bytes = BigDecimal(SHA256_DIGEST_SIZE)
+      b_in_bytes = SHA256_DIGEST_SIZE
       r_in_bytes = b_in_bytes * 2
-      ell = (BigDecimal(len_in_bytes) / b_in_bytes).ceil
+      ell = (len_in_bytes + b_in_bytes - 1) / b_in_bytes
       raise BLS::Error, 'Invalid xmd length' if ell > 255
 
       dst_prime = dst.bytes + BLS.i2osp(dst.bytesize, 1)
