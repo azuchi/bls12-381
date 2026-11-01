@@ -93,11 +93,13 @@ module BLS
       self.class.new(x, y, z)
     end
 
-    # Compare one point to another.
+    # Compare one point to another. A G1 point never equals a G2 point, nil, or anything
+    # else that is not a point of the same group, and says so with false rather than an
+    # exception, since Array#include?, uniq and the like call this on whatever they hold.
     # @param [ProjectivePoint] other another point.
     # @return [Boolean] whether same point or not.
     def ==(other)
-      raise PointError, "ProjectivePoint#==: this is #{self.class}, but other is #{other.class}" unless self.class == other.class
+      return false unless other.is_a?(self.class)
 
       (x * other.z) == (other.x * z) && (y * other.z) == (other.y * z)
     end

@@ -6,6 +6,7 @@
 - `expand_message_xmd`, and so `hash_to_curve` with a custom `dst:`, handles a domain separation tag longer than 255 bytes by hashing it as RFC 9380 section 5.3.3 prescribes, instead of failing inside I2OSP.
 - Raising a field element to a negative power raises `ArgumentError`; `Fp2`, `Fp6` and `Fp12` used to answer with one.
 - `==` on `Fp2`, `Fp6` and `Fp12` returns false for anything that is not the same kind of element instead of raising `NoMethodError`.
+- `==` on a point returns false for a point of the other group, nil or anything else that is not a point of the same group, instead of raising `BLS::PointError`.
 
 ### Changed
 

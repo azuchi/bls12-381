@@ -16,6 +16,19 @@ RSpec.describe 'bls12-381 Point' do
       end
     end
 
+    # Array#include?, uniq and friends call == on whatever they hold, so a G1 point has to
+    # answer false, not raise, when compared with a G2 point or with nil.
+    it 'is false, not an error, against points of the other group and non-points' do
+      g1 = BLS::PointG1::BASE
+      g2 = BLS::PointG2::BASE
+      [g2, nil, 1, 'point', BLS::Fp::ONE].each do |other|
+        expect(g1 == other).to be false
+        expect(g2 == other).to be(other.equal?(g2))
+      end
+      expect([g1, g1 * 2].include?(g2)).to be false
+      expect([g1, g2].include?(g2)).to be true
+    end
+
     it 'should be placed on curve vector 1' do
       a = BLS::PointG1.new(BLS::Fp.new(0), BLS::Fp.new(1), BLS::Fp.new(0))
       expect { a.validate! }.not_to raise_error
