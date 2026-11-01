@@ -45,6 +45,11 @@ module BLS
                 return ZERO if i_bit == POINT_INFINITY_FLAG
                 x1 = bytes[0...PUBLIC_KEY_LENGTH].unpack1('H*').to_i(16)
                 x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
+                # Fp.new reduces modulo P, so without this check x + P would decode as the same
+                # point under a second encoding. G1 refuses these too.
+                unless x0 < Curve::P && x1 < Curve::P
+                  raise PointError, 'Invalid point G2, coordinates must be less than the field order.'
+                end
                 x = Fp2.new([x0, x1])
                 right = x ** 3 + Fp2.new(Curve::B2)
                 y = right.sqrt
@@ -66,6 +71,9 @@ module BLS
                 x0 = bytes[PUBLIC_KEY_LENGTH...(2 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
                 y1 = bytes[(2 * PUBLIC_KEY_LENGTH)...(3 * PUBLIC_KEY_LENGTH)].unpack1('H*').to_i(16)
                 y0 = bytes[(3 * PUBLIC_KEY_LENGTH)..-1].unpack1('H*').to_i(16)
+                unless [x0, x1, y0, y1].all? { |c| c < Curve::P }
+                  raise PointError, 'Invalid point G2, coordinates must be less than the field order.'
+                end
                 PointG2.new(Fp2.new([x0, x1]), Fp2.new([y0, y1]), Fp2::ONE)
               else
                 raise PointError, 'Invalid point G2, compression flag does not match the encoded length.'

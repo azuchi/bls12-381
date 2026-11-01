@@ -416,6 +416,35 @@ RSpec.describe 'bls12-381 Point' do
       expect_rejected(point.to_hex(compressed: true)[0..-2])
     end
 
+    # The G2 analogue of the G1 check above. Fp.new reduces modulo P, so a coordinate
+    # written as c + P decoded to the same point as c until from_hex refused it, and the
+    # eth deserialization vectors only caught this by luck: their c + P values happen to
+    # land off the curve or outside the subgroup.
+    it 'rejects a G2 coordinate that is not reduced modulo the field order' do
+      p = BLS::Curve::P
+      point = (1..200).map { |i| BLS::PointG2::BASE * i }
+                      .find { |pt| pt.to_affine[0].coeffs[1].value + p < BLS::POW_2_381 }
+      expect(point).not_to be_nil
+      x, y = point.to_affine.map(&:values)
+      sign = [point.to_hex(compressed: true)].pack('H*').getbyte(0) & BLS::POINT_Y_FLAG
+      expect_g2_rejected = ->(hex) { expect { BLS::PointG2.from_hex(hex) }.to raise_error(BLS::PointError, /field order/) }
+      compressed = ->(x1, x0) { BLS.num_to_hex(x1 + (sign.zero? ? 0 : BLS::POW_2_381) + BLS::POW_2_383, 48) + BLS.num_to_hex(x0, 48) }
+      uncompressed = ->(c) { c.map { |v| BLS.num_to_hex(v, 48) }.join }
+    
+      # Sanity check: the same framing with reduced coordinates decodes to the point.
+      expect(BLS::PointG2.from_hex(compressed.call(x[1], x[0]))).to eq(point)
+      expect(BLS::PointG2.from_hex(uncompressed.call([x[1], x[0], y[1], y[0]]))).to eq(point)
+    
+      expect_g2_rejected.call(compressed.call(x[1] + p, x[0]))
+      expect_g2_rejected.call(compressed.call(x[1], x[0] + p))
+      expect_g2_rejected.call(uncompressed.call([x[1] + p, x[0], y[1], y[0]]))
+      expect_g2_rejected.call(uncompressed.call([x[1], x[0] + p, y[1], y[0]]))
+      expect_g2_rejected.call(uncompressed.call([x[1], x[0], y[1] + p, y[0]]))
+      expect_g2_rejected.call(uncompressed.call([x[1], x[0], y[1], y[0] + p]))
+      # Exactly P is just as unreduced as P + c.
+      expect_g2_rejected.call(uncompressed.call([x[1], p, y[1], y[0]]))
+    end
+    
     it 'rejects any other length for G2 too' do
       ['', '00', 'ff' * 10, 'ab' * 95].each do |hex|
         expect { BLS::PointG2.from_hex(hex) }.to raise_error(BLS::PointError)
