@@ -167,6 +167,9 @@ module BLS
     # Being on the curve is not sufficient: E(Fp) and E'(Fp2) both contain points
     # outside the order-r subgroup, and accepting them makes keys and signatures malleable.
     # Since r**2 does not divide the group order, [r]P == O holds only for P in the subgroup.
+    # That is the definition and the reference the specs compare against; PointG1 and PointG2
+    # override it with an endomorphism check that reaches the same answer in a fraction of
+    # the time.
     # @return [Boolean] true if this point is in the prime-order subgroup.
     def in_group?
       zero? || multiply_unsafe(Curve::R).zero?

@@ -147,6 +147,20 @@ module BLS
       to_hex(compressed: true)
     end
 
+    # Check whether this point belongs to G2, by the test of section 4 of
+    # https://eprint.iacr.org/2021/1130: psi, the untwist-Frobenius-twist endomorphism that
+    # {clear_cofactor} also uses, acts on G2 as multiplication by the curve parameter z, and a
+    # point of E'(Fp2) satisfies psi(P) == [z]P exactly when it lies in G2. z is negative for
+    # BLS12-381 and Curve::X holds its magnitude, hence the negate. One multiplication by a
+    # 64-bit scalar with six set bits instead of one by the 255-bit r.
+    # @return [Boolean] true if this point is in G2.
+    def in_group?
+      return true if zero?
+
+      psi = from_affine_tuple(BLS.psi(*to_affine))
+      psi == multiply_unsafe(Curve::X).negate
+    end
+
     def validate!
       b = Fp2.new(Curve::B2)
       return if zero?

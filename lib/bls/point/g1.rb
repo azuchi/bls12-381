@@ -111,6 +111,23 @@ module BLS
       PointG1.new(Fp.new(p.x), Fp.new(p.y), Fp::ONE)
     end
 
+    # A primitive cube root of unity in Fp. (x, y) -> (BETA * x, y) is an endomorphism of E(Fp)
+    # that acts on G1 as multiplication by -z**2, z being the curve parameter. Of the two
+    # primitive roots, this is the one for which that holds; the other gives the inverse map.
+    ENDO_BETA = Fp.new(PSI2_C1).square
+
+    # Check whether this point belongs to G1, by the test of section 4 of
+    # https://eprint.iacr.org/2021/1130: a point of E(Fp) satisfies phi(P) == [-z**2]P exactly
+    # when it lies in G1. Two multiplications by the 64-bit z, with its six set bits, instead
+    # of one by the 255-bit r.
+    # @return [Boolean] true if this point is in G1.
+    def in_group?
+      return true if zero?
+
+      endo = PointG1.new(x * ENDO_BETA, y, z)
+      endo == multiply_unsafe(Curve::X).multiply_unsafe(Curve::X).negate
+    end
+
     # Validate this point whether on curve over Fp.
     # @raise [PointError] Occur when this point not on curve over Fp.
     def validate!

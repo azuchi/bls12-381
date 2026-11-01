@@ -566,6 +566,45 @@ RSpec.describe 'bls12-381 Point' do
       end
     end
 
+    # The endomorphism tests have to agree with the definition, [r]P == O, which is what the
+    # base class still computes. Random points of E(Fp) and E'(Fp2) are outside the subgroup
+    # with overwhelming probability, and multiplying by the cofactor puts them inside it.
+    it 'agrees with multiplication by the group order on random curve points' do
+      by_order = ->(p) { p.zero? || p.multiply_unsafe(BLS::Curve::R).zero? }
+      3.times do
+        g1 = random_curve_point_g1
+        expect(by_order.call(g1)).to be false
+        expect(g1.in_group?).to be false
+        cleared = g1.multiply_unsafe(BLS::Curve::H)
+        expect(by_order.call(cleared)).to be true
+        expect(cleared.in_group?).to be true
+
+        g2 = random_curve_point_g2
+        expect(by_order.call(g2)).to be false
+        expect(g2.in_group?).to be false
+        cleared = g2.multiply_unsafe(BLS::Curve::H2)
+        expect(by_order.call(cleared)).to be true
+        expect(cleared.in_group?).to be true
+      end
+    end
+
+    def random_curve_point_g1
+      loop do
+        x = BLS::Fp.new(rand(1...BLS::Curve::P))
+        rhs = x**3 + BLS::Fp.new(BLS::Curve::B)
+        y = rhs**((BLS::Curve::P + 1) / 4)
+        return BLS::PointG1.new(x, y, BLS::Fp::ONE) if y.square == rhs
+      end
+    end
+
+    def random_curve_point_g2
+      loop do
+        x = BLS::Fp2.new([rand(1...BLS::Curve::P), rand(1...BLS::Curve::P)])
+        y = (x**3 + BLS::Fp2.new(BLS::Curve::B2)).sqrt
+        return BLS::PointG2.new(x, y, BLS::Fp2::ONE) if y
+      end
+    end
+
     # A point of order 3 on E(Fp). #E(Fp) = r * h and 3 divides h.
     def small_order_point_g1
       x = 1
