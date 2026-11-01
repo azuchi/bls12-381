@@ -221,13 +221,19 @@ module BLS
 
     # Scalar multiplication using wNAF.
     #
-    # This is NOT constant time, despite what {multiply_unsafe} implies by contrast. wNAF
-    # gives every window an addition, but the point it adds is read at an index derived from
-    # the scalar, and the additions themselves branch on whether an operand is the identity
-    # or the two are equal. Underneath, Ruby's bignum arithmetic and the modulo in Fp both run
-    # in time that depends on their operands. Anything the scalar decides is therefore visible
-    # to something watching timing or cache behaviour, which matters here because #sign and
-    # .from_private_key reach this with the private key. See the README.
+    # This is NOT constant time, despite what {multiply_unsafe} implies by contrast. The
+    # number of additions follows the number of non-zero windows in the scalar, the point
+    # each one adds is read at an index derived from the scalar, and the additions themselves
+    # branch on whether an operand is the identity or the two are equal. Underneath, Ruby's
+    # bignum arithmetic and the modulo in Fp both run in time that depends on their operands.
+    # Anything the scalar decides is therefore visible to something watching timing or cache
+    # behaviour, which matters here because #sign and .from_private_key reach this with the
+    # private key. See the README.
+    #
+    # noble, which this follows, adds a throwaway point on every zero window so that each
+    # window costs one addition whatever its digit. That buys nothing here, where the
+    # arithmetic underneath is not constant time to begin with, so the zero windows are
+    # skipped and the work saved instead.
     def multiply(scalar)
       n = scalar.is_a?(Field) ? scalar.value : scalar
       raise PointError, 'Invalid scalar, expected positive integer' if n <= 0
@@ -238,7 +244,7 @@ module BLS
       n %= Curve::R
       return zero if n.zero?
 
-      wNAF(n).first
+      wNAF(n)
     end
     alias * multiply
 
@@ -303,7 +309,6 @@ module BLS
     def wNAF(n)
       w, precomputes = m_precomputes || [1, precomputes_window(1)]
       p = zero
-      f = zero
       windows = window_count(w)
       window_size = 2**(w - 1)
       mask = (2**w - 1)
@@ -317,14 +322,12 @@ module BLS
           wbits -= max_number
           n += 1
         end
-        if wbits.zero?
-          f += (window % 2 ? precomputes[offset].negate : precomputes[offset])
-        else
-          cached = precomputes[offset + wbits.abs - 1]
-          p += (wbits.negative? ? cached.negate : cached)
-        end
+        next if wbits.zero?
+
+        cached = precomputes[offset + wbits.abs - 1]
+        p += (wbits.negative? ? cached.negate : cached)
       end
-      [p, f]
+      p
     end
   end
 
