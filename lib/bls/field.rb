@@ -45,7 +45,10 @@ module BLS
       self.class.new(value**2)
     end
 
+    # @raise [ArgumentError] Occur when +n+ is negative. Divide by the positive power instead.
     def pow(n)
+      raise ArgumentError, 'Exponent must not be negative.' if n.negative?
+
       v = value.pow(n, self.class.const_get(:ORDER))
       self.class.new(v)
     end
@@ -130,6 +133,8 @@ module BLS
   module FQP
 
     def ==(other)
+      return false unless other.is_a?(self.class)
+
       coeffs == other.coeffs
     end
 
@@ -157,7 +162,11 @@ module BLS
       self.class.new(coeffs.map(&:negate))
     end
 
+    # @raise [ArgumentError] Occur when +n+ is negative, which the loop below would otherwise
+    # answer with ONE as though it had been zero.
     def pow(n)
+      raise ArgumentError, 'Exponent must not be negative.' if n.negative?
+
       one = self.class.const_get(:ONE)
       return one if n.zero?
       return self if n == 1

@@ -9,6 +9,28 @@ RSpec.describe BLS::Field do
       expect(a).not_to eq(BLS::Fr.new(4))
       expect(a).not_to eq(BLS::Fp.new(3))
     end
+
+    it 'is false, not an error, for the extension fields against anything else' do
+      expect(BLS::Fp2::ONE).to eq(BLS::Fp2.new([1, 0]))
+      [nil, 1, 'one', BLS::Fp::ONE, BLS::Fp6::ONE, BLS::Fp12::ONE].each do |other|
+        expect(BLS::Fp2::ONE == other).to be false
+      end
+      expect(BLS::Fp6::ONE == BLS::Fp12::ONE).to be false
+      expect(BLS::Fp12::ONE == BLS::Fp6::ONE).to be false
+    end
+  end
+
+  describe '#pow' do
+    # FQP#pow walked the bits of the exponent, and a negative one has none to walk, so it
+    # came back as ONE. Fp#pow raised, from Integer#pow, so the two now agree on refusing.
+    it 'refuses a negative exponent instead of answering one' do
+      [BLS::Fp.new(3), BLS::Fr.new(3), BLS::Fp2.new([3, 5]), BLS::Fp6::ONE * 3, BLS::Fp12::ONE * 3].each do |e|
+        expect { e**-1 }.to raise_error(ArgumentError, /negative/)
+        expect(e**0).to eq(e.class::ONE)
+        expect(e**1).to eq(e)
+        expect(e**3).to eq(e * e * e)
+      end
+    end
   end
 
   describe '#invert' do
