@@ -371,6 +371,17 @@ RSpec.describe 'bls12-381 Point' do
       end
       expect(BLS::PointG2.hash_to_curve('AABBCC')).to eq(BLS::PointG2.hash_to_curve('aabbcc'))
     end
+
+    # RFC 9380 section 3.1 forbids an empty tag. G2 used to take it without a word, and G1
+    # raised the h2c gem's H2C::Error, which no `rescue BLS::Error` would have caught.
+    it 'rejects an empty or non-string domain separation tag under BLS::Error for both groups' do
+      [BLS::PointG1, BLS::PointG2].each do |klass|
+        expect { klass.hash_to_curve('aabb', dst: '') }.to raise_error(BLS::Error, /must not be empty/)
+        expect { klass.hash_to_curve('aabb', dst: 123) }.to raise_error(BLS::Error, /must be a string/)
+        expect { klass.hash_to_curve('aabb', dst: nil) }.not_to raise_error
+        expect { klass.hash_to_curve('aabb', dst: 'x') }.not_to raise_error
+      end
+    end
   end
 
   describe 'G1 serialization validation' do

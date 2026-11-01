@@ -100,7 +100,7 @@ module BLS
     def self.hash_to_curve(message, scheme: :basic, dst: nil)
       validate_hex!(message)
 
-      u = BLS::H2C::G2.hash_to_field(message, dst || self.dst(scheme))
+      u = BLS::H2C::G2.hash_to_field(message, resolve_dst(dst, scheme))
       q0 = PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[0])))
       q1 = PointG2.new(*BLS::H2C::G2.isogeny_map(*BLS::H2C::G2.map_to_curve_sswu(u[1])))
       r = q0 + q1

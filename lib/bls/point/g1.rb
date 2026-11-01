@@ -105,10 +105,13 @@ module BLS
     def self.hash_to_curve(message, scheme: :basic, dst: nil)
       validate_hex!(message)
 
-      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, dst || self.dst(scheme))
+      h2c = ::H2C.get(::H2C::Suite::BLS12381G1_XMDSHA256_SSWU_RO_, resolve_dst(dst, scheme))
       p = h2c.digest([message].pack('H*'))
 
       PointG1.new(Fp.new(p.x), Fp.new(p.y), Fp::ONE)
+    rescue ::H2C::Error => e
+      # Whatever the h2c gem objects to, callers rescue it the way they rescue the rest.
+      raise PointError, e.message
     end
 
     # A primitive cube root of unity in Fp. (x, y) -> (BETA * x, y) is an endomorphism of E(Fp)

@@ -55,6 +55,10 @@ RSpec.describe BLS::H2C do
       expect(point).not_to eq(BLS::PointG2.hash_to_curve('aa', dst: long[0, 255]))
     end
 
+    it 'rejects an empty tag' do
+      expect { BLS::H2C.expand_message_xmd('aabb', 32, '') }.to raise_error(BLS::Error, /must not be empty/)
+    end
+
     it 'produces different output for different tags' do
       msg = '00' * 32
       basic = BLS::H2C.expand_message_xmd(msg, 32, BLS::PointG2::DST_BASIC)

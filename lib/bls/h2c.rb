@@ -19,6 +19,8 @@ module BLS
     # @return [Array[Integer]] byte array.
     # @raise BLS::Error
     def expand_message_xmd(message, len_in_bytes, dst)
+      raise BLS::Error, 'Domain separation tag must not be empty.' if dst.empty? # RFC 9380 section 3.1
+
       dst = Digest::SHA256.digest(OVERSIZE_DST_PREFIX + dst) if dst.bytesize > MAX_DST_LENGTH
       b_in_bytes = SHA256_DIGEST_SIZE
       r_in_bytes = b_in_bytes * 2

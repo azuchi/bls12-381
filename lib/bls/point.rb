@@ -44,6 +44,22 @@ module BLS
       end
     end
 
+    # The tag {hash_to_curve} will use: the +dst+ given, or the one +scheme+ names.
+    # An empty tag is refused here, under BLS::Error, for both groups alike. RFC 9380 section
+    # 3.1 forbids it, and left to the layers below it would either go through unnoticed (G2)
+    # or surface as the h2c gem's own exception (G1), outside this library's hierarchy.
+    # @param [String, nil] dst explicit domain separation tag, if any.
+    # @param [Symbol] scheme signature scheme to take the tag from otherwise.
+    # @return [String] domain separation tag.
+    # @raise [BLS::Error] Occur when the tag is empty or not a string, or the scheme unknown.
+    def self.resolve_dst(dst, scheme)
+      return self.dst(scheme) if dst.nil?
+      raise BLS::Error, 'Domain separation tag must be a string.' unless dst.is_a?(String)
+      raise BLS::Error, 'Domain separation tag must not be empty.' if dst.empty?
+
+      dst
+    end
+
     # Check that +hex+ is a whole number of bytes written in hex, for {from_hex} and
     # {hash_to_curve}, which both unpack their argument with pack('H*').
     #

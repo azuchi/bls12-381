@@ -16,6 +16,7 @@
 - The `bigdecimal` dependency is gone.
 - Requires Ruby 3.3 or later, matching what is tested.
 - Depend on h2c 0.4.x, which no longer defines a top-level `BLS` module of its own.
+- `hash_to_curve` refuses an empty or non-string `dst:` with `BLS::Error` for both groups, as RFC 9380 section 3.1 requires, and anything the h2c gem raises for G1 arrives as `BLS::PointError` rather than `H2C::Error`.
 
 ## [0.4.0] - 2026-08-10
 
