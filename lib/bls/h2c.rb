@@ -34,7 +34,10 @@ module BLS
       payload = z_pad + [message].pack('H*').bytes + l_i_b_str + BLS.i2osp(0, 1) + dst_prime
       b_0 = Digest::SHA256.digest(payload.pack('C*'))
       b[0] = Digest::SHA256.digest((b_0.bytes + BLS.i2osp(1, 1) + dst_prime).pack('C*'))
-      (1..ell).each do |i|
+      # b[i] holds the RFC's b_(i + 1), so b_2 .. b_ell is ell - 1 more blocks. Running the
+      # loop to ell made one block too many: harmless after the truncation below, except that
+      # at ell == 255 its counter byte overflowed and the call failed at the RFC's own limit.
+      (1...ell).each do |i|
         args = BLS.bin_xor(b_0, b[i - 1]).bytes + BLS.i2osp(i + 1, 1) + dst_prime
         b[i] = Digest::SHA256.digest(args.pack('C*'))
       end
@@ -102,7 +105,7 @@ module BLS
       end
 
       # 3-isogeny map from E' to E
-      # Converts from Jacobi (xyz) to Projective (xyz) coordinates.
+      # Takes and returns projective (x, y, z) coordinates.
       def isogeny_map(x, y, z)
         mapped = Array.new(4, Fp2::ZERO)
         z_powers = [z, z**2, z**3]

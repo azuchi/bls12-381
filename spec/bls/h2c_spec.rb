@@ -55,6 +55,25 @@ RSpec.describe BLS::H2C do
       expect(point).not_to eq(BLS::PointG2.hash_to_curve('aa', dst: long[0, 255]))
     end
 
+    # The loop that fills in blocks b_2 .. b_ell ran one block too far, so ell == 255, the
+    # largest value RFC 9380 section 5.3.1 allows, overflowed the one-byte block counter and
+    # failed, and every other length cost a SHA-256 more than it needed.
+    it 'produces every length up to the RFC maximum with exactly one digest per block' do
+      calls = 0
+      counting = Module.new { define_method(:digest) { |*args| calls += 1; super(*args) } }
+      Digest::SHA256.singleton_class.prepend(counting)
+      begin
+        [1, 32, 33, 256, 254 * 32, 255 * 32].each do |len|
+          calls = 0
+          expect(BLS::H2C.expand_message_xmd('00', len, 'QUUX').size).to eq(len)
+          expect(calls).to eq((len + 31) / 32 + 1) # b_0 plus one per output block
+        end
+        expect { BLS::H2C.expand_message_xmd('00', 255 * 32 + 1, 'QUUX') }.to raise_error(BLS::Error, /xmd length/)
+      ensure
+        counting.send(:remove_method, :digest)
+      end
+    end
+
     it 'rejects an empty tag' do
       expect { BLS::H2C.expand_message_xmd('aabb', 32, '') }.to raise_error(BLS::Error, /must not be empty/)
     end
