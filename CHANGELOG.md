@@ -1,5 +1,7 @@
 ## [Unreleased]
 
+## [0.5.0] - 2026-11-02
+
 ### Fixed
 
 - `PointG2.from_hex` now rejects a coordinate at or above the field order. A coordinate written as `c + P` used to decode to the same point as `c`, giving one point several encodings.
